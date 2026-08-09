@@ -410,8 +410,21 @@ export function generateId() {
   return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
 }
 
+// Formats a Date using its LOCAL calendar day (never UTC via toISOString()).
+// toISOString() converts to UTC first, which shifts the calendar day by one
+// for any timezone ahead of UTC (e.g. NZ, UTC+12/+13) whenever local time is
+// before UTC-midnight-equivalent — a real, non-edge-case bug for this app's
+// NZ-based user. All "which calendar day is this" logic in the app must go
+// through this function, never through toISOString().slice(0, 10).
+export function formatLocalDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 export function todayISODate() {
-  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  return formatLocalDate(new Date()); // YYYY-MM-DD, local calendar day
 }
 ```
 
@@ -455,7 +468,7 @@ git commit -m "feat: add storage.js persistence wrapper with export/import and c
 // loops.js — Loop lifecycle rules. Pure functions that take/return the AppData shape;
 // callers are responsible for persisting via storage.js after mutating.
 
-import { generateId, todayISODate } from './storage.js';
+import { generateId, todayISODate, formatLocalDate } from './storage.js';
 
 export const KILL_REASONS = [
   'lost interest',
@@ -571,12 +584,16 @@ export function setNextAction(data, loopId, next_action) {
 
 // Consecutive days (walking back from today, not including today) with a
 // completed check-in. A gap or an incomplete day breaks the streak.
+//
+// Dates are stepped and re-formatted entirely in LOCAL time via
+// formatLocalDate() — never via toISOString(), which would convert to UTC
+// and shift the calendar day by one in timezones ahead of UTC (e.g. NZ).
 export function computeStreak(loop, today = todayISODate()) {
   let streak = 0;
   let cursor = new Date(today + 'T00:00:00');
   while (true) {
     cursor.setDate(cursor.getDate() - 1);
-    const dateStr = cursor.toISOString().slice(0, 10);
+    const dateStr = formatLocalDate(cursor);
     const entry = loop.checkin_history.find((c) => c.date === dateStr);
     if (entry && entry.action_completed) {
       streak++;
@@ -590,14 +607,21 @@ export function computeStreak(loop, today = todayISODate()) {
 // Consecutive missed days for the active loop, walking back from today
 // (not including today, since today may not be over yet), stopping at
 // the loop's status_changed_date.
+//
+// status_changed_date is a full ISO UTC timestamp (from new Date().toISOString()).
+// To find "which local calendar day" it falls on, parse it as an absolute
+// instant with `new Date(...)` and read its LOCAL year/month/date — do not
+// slice the ISO string's first 10 characters, which is the UTC calendar day
+// and can be a day off from the local one.
 export function computeConsecutiveMisses(loop, today = todayISODate()) {
   let misses = 0;
   let cursor = new Date(today + 'T00:00:00');
-  const boundary = new Date(loop.status_changed_date.slice(0, 10) + 'T00:00:00');
+  const changedAt = new Date(loop.status_changed_date);
+  const boundary = new Date(changedAt.getFullYear(), changedAt.getMonth(), changedAt.getDate());
   while (true) {
     cursor.setDate(cursor.getDate() - 1);
     if (cursor < boundary) break;
-    const dateStr = cursor.toISOString().slice(0, 10);
+    const dateStr = formatLocalDate(cursor);
     const entry = loop.checkin_history.find((c) => c.date === dateStr);
     if (!entry || !entry.action_completed) {
       misses++;
@@ -690,7 +714,13 @@ export function deleteTask(data, taskId) {
 
 export function isTaskStale(task, today = todayISODate()) {
   if (task.done) return false;
-  const created = new Date(task.created_date.slice(0, 10) + 'T00:00:00');
+  // task.created_date is a full ISO UTC timestamp. Parse it as an absolute
+  // instant, then read its LOCAL year/month/date — do not slice the ISO
+  // string's first 10 characters (that's the UTC calendar day, which can be
+  // a day off from the local one; see the note in loops.js's
+  // computeConsecutiveMisses for why this matters for this app's NZ-based user).
+  const createdAt = new Date(task.created_date);
+  const created = new Date(createdAt.getFullYear(), createdAt.getMonth(), createdAt.getDate());
   const now = new Date(today + 'T00:00:00');
   const daysOpen = Math.floor((now - created) / (1000 * 60 * 60 * 24));
   return daysOpen >= 14;
@@ -730,7 +760,13 @@ export function isReviewDue(data, today = new Date()) {
 }
 
 function withinLastNDays(isoDateString, today, n) {
-  const date = new Date(isoDateString.slice(0, 10) + 'T00:00:00');
+  // isoDateString is a full ISO UTC timestamp. Parse it as an absolute instant
+  // and read its LOCAL year/month/date — slicing the first 10 characters would
+  // give the UTC calendar day, which can be a day off from the local one in
+  // timezones ahead of UTC (e.g. NZ). See loops.js's computeConsecutiveMisses
+  // for the same fix applied to loop status changes.
+  const parsedAt = new Date(isoDateString);
+  const date = new Date(parsedAt.getFullYear(), parsedAt.getMonth(), parsedAt.getDate());
   const cutoff = new Date(today);
   cutoff.setDate(cutoff.getDate() - n);
   return date >= cutoff && date <= today;
