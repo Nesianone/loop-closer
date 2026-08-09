@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en-NZ">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Loop Closer</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="theme-color" content="#0f1115">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <div id="view-onboarding" class="view"></div>
+    <div id="view-today" class="view"></div>
+    <div id="view-inventory" class="view"></div>
+    <div id="view-parking-lot" class="view"></div>
+    <div id="view-recap-log" class="view"></div>
+    <div id="view-settings" class="view"></div>
+
+    <div id="modal-root" class="modal-overlay"><div class="modal-box" id="modal-content"></div></div>
+
+    <nav class="nav-bottom" id="bottom-nav">
+      <button data-view="today">Today</button>
+      <button data-view="inventory">Loops</button>
+      <button data-view="parking-lot">Ideas</button>
+      <button data-view="recap-log">Recap</button>
+      <button data-view="settings">Settings</button>
+    </nav>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

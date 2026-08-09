@@ -1,0 +1,145 @@
+:root {
+  --color-bg: #0f1115;
+  --color-surface: #1a1d24;
+  --color-text: #f2f2f5;
+  --color-text-dim: #a0a4ae;
+  --color-primary: #4f46e5;
+  --color-danger: #dc2626;
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-border: #2a2d36;
+  --font-size-base: 16px;
+  --font-size-lg: 20px;
+  --font-size-xl: 28px;
+  --tap-min: 44px;
+  --radius: 10px;
+  --spacing: 12px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: var(--font-size-base);
+  overflow-x: hidden;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.view {
+  display: none;
+  flex: 1;
+  padding: var(--spacing);
+  padding-bottom: calc(var(--tap-min) + 24px);
+}
+
+.view.active {
+  display: block;
+}
+
+.btn {
+  min-height: var(--tap-min);
+  padding: 0 16px;
+  border-radius: var(--radius);
+  border: none;
+  background: var(--color-primary);
+  color: white;
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  width: 100%;
+  margin: 6px 0;
+}
+
+.btn.secondary { background: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-border); }
+.btn.danger { background: var(--color-danger); }
+.btn.success { background: var(--color-success); }
+
+input, textarea, select {
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  margin: 6px 0;
+}
+
+textarea { min-height: 80px; }
+
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  padding: var(--spacing);
+  margin-bottom: var(--spacing);
+}
+
+.nav-bottom {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  display: flex;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+}
+
+.nav-bottom button {
+  flex: 1;
+  min-height: var(--tap-min);
+  background: none;
+  border: none;
+  color: var(--color-text-dim);
+  font-size: 12px;
+  padding: 6px 0;
+}
+
+.nav-bottom button.active {
+  color: var(--color-primary);
+}
+
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: var(--spacing);
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal-box {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  padding: 20px;
+  max-width: 480px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--color-border);
+  color: var(--color-text);
+}
+
+.badge.active { background: var(--color-primary); }
+.badge.parked { background: var(--color-warning); }
+.badge.killed { background: var(--color-danger); }
+.badge.done { background: var(--color-success); }
