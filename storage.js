@@ -66,6 +66,19 @@ export function generateId() {
   return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
 }
 
+// Formats a Date using its LOCAL calendar day (never UTC via toISOString()).
+// toISOString() converts to UTC first, which shifts the calendar day by one
+// for any timezone ahead of UTC (e.g. NZ, UTC+12/+13) whenever local time is
+// before UTC-midnight-equivalent — a real, non-edge-case bug for this app's
+// NZ-based user. All "which calendar day is this" logic in the app must go
+// through this function, never through toISOString().slice(0, 10).
+export function formatLocalDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 export function todayISODate() {
-  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  return formatLocalDate(new Date()); // YYYY-MM-DD, local calendar day
 }
