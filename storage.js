@@ -82,3 +82,52 @@ export function formatLocalDate(date) {
 export function todayISODate() {
   return formatLocalDate(new Date()); // YYYY-MM-DD, local calendar day
 }
+
+export function addTask(data, { title, due_date }) {
+  const task = {
+    id: generateId(),
+    title,
+    done: false,
+    created_date: new Date().toISOString(),
+    due_date: due_date || null,
+    completed_date: null
+  };
+  data.tasks.push(task);
+  return task;
+}
+
+export function toggleTask(data, taskId) {
+  const task = data.tasks.find((t) => t.id === taskId);
+  if (!task) throw new Error('Task not found: ' + taskId);
+  task.done = !task.done;
+  task.completed_date = task.done ? new Date().toISOString() : null;
+  return task;
+}
+
+export function deleteTask(data, taskId) {
+  data.tasks = data.tasks.filter((t) => t.id !== taskId);
+}
+
+export function isTaskStale(task, today = todayISODate()) {
+  if (task.done) return false;
+  // task.created_date is a full ISO UTC timestamp. Parse it as an absolute
+  // instant, then read its LOCAL year/month/date — do not slice the ISO
+  // string's first 10 characters (that's the UTC calendar day, which can be
+  // a day off from the local one; see the note in loops.js's
+  // computeConsecutiveMisses for why this matters for this app's NZ-based user).
+  const createdAt = new Date(task.created_date);
+  const created = new Date(createdAt.getFullYear(), createdAt.getMonth(), createdAt.getDate());
+  const now = new Date(today + 'T00:00:00');
+  const daysOpen = Math.floor((now - created) / (1000 * 60 * 60 * 24));
+  return daysOpen >= 14;
+}
+
+export function addParkingLotEntry(data, { title, note }) {
+  const entry = { id: generateId(), title, note: note || '', created_date: new Date().toISOString() };
+  data.parkingLot.push(entry);
+  return entry;
+}
+
+export function removeParkingLotEntry(data, entryId) {
+  data.parkingLot = data.parkingLot.filter((e) => e.id !== entryId);
+}
