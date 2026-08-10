@@ -30,6 +30,7 @@ let onboardingPhase = 'collect'; // 'collect' | 'decide'
 
 let inventoryFilterStatus = 'all';
 let inventoryFilterDomain = 'all';
+let inventoryExpandedSteps = new Set();
 
 function showView(viewName) {
   currentView = viewName;
@@ -382,12 +383,22 @@ function renderInventory() {
     else if (l.status === 'killed') detail = `Reason: ${escapeHtml(l.kill_reason)}${l.kill_note ? ' — ' + escapeHtml(l.kill_note) : ''}`;
     else if (l.status === 'done') detail = `Reflection: ${escapeHtml(l.ship_reflection)}`;
 
+    const actionLog = l.action_log || [];
+    const expanded = inventoryExpandedSteps.has(l.id);
+    const stepsSection = actionLog.length
+      ? `
+        <button class="btn secondary" data-toggle-steps="${l.id}">${expanded ? 'Hide' : 'Show'} steps (${actionLog.length})</button>
+        ${expanded ? `<ul>${actionLog.map((a) => `<li>${escapeHtml(a.date)} — ${escapeHtml(a.text)}</li>`).join('')}</ul>` : ''}
+      `
+      : '';
+
     return `
       <div class="card">
         <span class="badge ${l.status}">${l.status.toUpperCase()}</span>
         <span class="badge">${escapeHtml(l.domain)}</span>
         <h3>${escapeHtml(l.title)}</h3>
         <p>${detail}</p>
+        ${stepsSection}
         ${l.status === 'parked' && !hasActive && !loops.hasUnresolvedParkedLoop(data, l.id) ? `<button class="btn" data-activate-id="${l.id}">Activate</button>` : ''}
       </div>
     `;
@@ -417,6 +428,18 @@ function renderInventory() {
 
   el.querySelectorAll('[data-activate-id]').forEach((btn) => {
     btn.addEventListener('click', () => openActivateModal(btn.dataset.activateId));
+  });
+
+  el.querySelectorAll('[data-toggle-steps]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.toggleSteps;
+      if (inventoryExpandedSteps.has(id)) {
+        inventoryExpandedSteps.delete(id);
+      } else {
+        inventoryExpandedSteps.add(id);
+      }
+      renderInventory();
+    });
   });
 }
 
