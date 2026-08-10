@@ -28,6 +28,9 @@ let onboardingQueue = [];
 let onboardingIndex = 0;
 let onboardingPhase = 'collect'; // 'collect' | 'decide'
 
+let inventoryFilterStatus = 'all';
+let inventoryFilterDomain = 'all';
+
 function showView(viewName) {
   currentView = viewName;
   for (const v of VIEWS) {
@@ -285,7 +288,140 @@ function openShipFlow(loopRef) {
   document.getElementById('ship-no').addEventListener('click', closeModal);
 }
 function renderInventory() {
-  document.getElementById('view-inventory').innerHTML = '<h2>Loop Inventory</h2><p>Coming soon.</p>';
+  const el = document.getElementById('view-inventory');
+  const hasActive = !!loops.getActiveLoop(data);
+
+  const statusOptions = ['all', 'active', 'parked', 'killed', 'done'];
+  const domainOptions = ['all', ...data.settings.domains];
+
+  const filtered = data.loops.filter((l) =>
+    (inventoryFilterStatus === 'all' || l.status === inventoryFilterStatus) &&
+    (inventoryFilterDomain === 'all' || l.domain === inventoryFilterDomain)
+  );
+
+  const rows = filtered.map((l) => {
+    let detail = '';
+    if (l.status === 'active') detail = `Next: ${escapeHtml(l.next_action)}`;
+    else if (l.status === 'parked') detail = `Resume: ${escapeHtml(l.resumption_plan)}`;
+    else if (l.status === 'killed') detail = `Reason: ${escapeHtml(l.kill_reason)}${l.kill_note ? ' — ' + escapeHtml(l.kill_note) : ''}`;
+    else if (l.status === 'done') detail = `Reflection: ${escapeHtml(l.ship_reflection)}`;
+
+    return `
+      <div class="card">
+        <span class="badge ${l.status}">${l.status.toUpperCase()}</span>
+        <span class="badge">${escapeHtml(l.domain)}</span>
+        <h3>${escapeHtml(l.title)}</h3>
+        <p>${detail}</p>
+        ${l.status === 'parked' && !hasActive ? `<button class="btn" data-activate-id="${l.id}">Activate</button>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  el.innerHTML = `
+    <h2>Loop Inventory</h2>
+    <label>Status</label>
+    <select id="inv-status-filter">${statusOptions.map((s) => `<option value="${s}" ${s === inventoryFilterStatus ? 'selected' : ''}>${s}</option>`).join('')}</select>
+    <label>Domain</label>
+    <select id="inv-domain-filter">${domainOptions.map((d) => `<option value="${escapeHtml(d)}" ${d === inventoryFilterDomain ? 'selected' : ''}>${escapeHtml(d)}</option>`).join('')}</select>
+
+    <button class="btn" id="inv-new-loop">+ New Loop</button>
+
+    ${rows || '<p>No loops match this filter.</p>'}
+  `;
+
+  el.querySelector('#inv-status-filter').addEventListener('change', (e) => {
+    inventoryFilterStatus = e.target.value;
+    renderInventory();
+  });
+  el.querySelector('#inv-domain-filter').addEventListener('change', (e) => {
+    inventoryFilterDomain = e.target.value;
+    renderInventory();
+  });
+  el.querySelector('#inv-new-loop').addEventListener('click', openNewLoopModal);
+
+  el.querySelectorAll('[data-activate-id]').forEach((btn) => {
+    btn.addEventListener('click', () => openActivateModal(btn.dataset.activateId));
+  });
+}
+
+function openNewLoopModal() {
+  const hasActive = !!loops.getActiveLoop(data);
+  const domainOptions = data.settings.domains.map((d) => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+  openModal(`
+    <h3>New Loop</h3>
+    <input id="new-loop-title" type="text" placeholder="Title">
+    <label>Domain</label>
+    <select id="new-loop-domain">${domainOptions}</select>
+
+    <div class="card">
+      <h4>Make it active${hasActive ? ' — disabled, one is already active' : ''}</h4>
+      <textarea id="new-loop-next" placeholder="Next physical step"></textarea>
+      <textarea id="new-loop-coping" placeholder="If I get stuck on X, then I will Y"></textarea>
+      <button class="btn" id="new-loop-active-submit" ${hasActive ? 'disabled' : ''}>Set Active</button>
+    </div>
+
+    <div class="card">
+      <h4>Park it</h4>
+      <textarea id="new-loop-resume" placeholder="Exactly where I left off and what I'll do first when I resume"></textarea>
+      <button class="btn secondary" id="new-loop-park-submit">Park</button>
+    </div>
+    <button class="btn secondary" id="new-loop-cancel">Cancel</button>
+  `);
+
+  document.getElementById('new-loop-cancel').addEventListener('click', closeModal);
+
+  document.getElementById('new-loop-active-submit').addEventListener('click', () => {
+    const title = document.getElementById('new-loop-title').value.trim();
+    const coping_plan = document.getElementById('new-loop-coping').value.trim();
+    if (!title) { alert('Title is required.'); return; }
+    if (!coping_plan) { alert('A coping plan is required to activate.'); return; }
+    loops.createLoop(data, {
+      title,
+      domain: document.getElementById('new-loop-domain').value,
+      next_action: document.getElementById('new-loop-next').value.trim(),
+      coping_plan,
+      status: 'active'
+    });
+    save();
+    closeModal();
+    renderInventory();
+  });
+
+  document.getElementById('new-loop-park-submit').addEventListener('click', () => {
+    const title = document.getElementById('new-loop-title').value.trim();
+    const resumption_plan = document.getElementById('new-loop-resume').value.trim();
+    if (!title) { alert('Title is required.'); return; }
+    if (!resumption_plan) { alert('A resumption plan is required to park.'); return; }
+    loops.createLoop(data, {
+      title,
+      domain: document.getElementById('new-loop-domain').value,
+      status: 'parked',
+      resumption_plan
+    });
+    save();
+    closeModal();
+    renderInventory();
+  });
+}
+
+function openActivateModal(loopId) {
+  const loop = data.loops.find((l) => l.id === loopId);
+  openModal(`
+    <h3>Activate "${escapeHtml(loop.title)}"</h3>
+    <p>${loop.coping_plan ? 'Existing coping plan: ' + escapeHtml(loop.coping_plan) : 'A coping plan is required.'}</p>
+    <textarea id="activate-coping" placeholder="If I get stuck on X, then I will Y">${escapeHtml(loop.coping_plan || '')}</textarea>
+    <button class="btn success" id="activate-confirm">Activate</button>
+    <button class="btn secondary" id="activate-cancel">Cancel</button>
+  `);
+  document.getElementById('activate-cancel').addEventListener('click', closeModal);
+  document.getElementById('activate-confirm').addEventListener('click', () => {
+    const coping_plan = document.getElementById('activate-coping').value.trim();
+    if (!coping_plan) { alert('A coping plan is required.'); return; }
+    loops.setActive(data, loopId, coping_plan);
+    save();
+    closeModal();
+    renderInventory();
+  });
 }
 function renderParkingLot() {
   document.getElementById('view-parking-lot').innerHTML = '<h2>Idea Parking Lot</h2><p>Coming soon.</p>';
