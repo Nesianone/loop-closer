@@ -11,7 +11,14 @@ function save() {
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str == null ? '' : String(str);
-  return div.innerHTML;
+  // The textContent->innerHTML round-trip escapes &, <, > (safe for text-node
+  // context) but NOT quote characters, since quotes aren't special there.
+  // This app also uses escapeHtml() inside HTML attributes (e.g. domain
+  // <option value="${escapeHtml(d)}">), where an unescaped quote would break
+  // out of the attribute. Escaping both quote styles here makes the one
+  // helper safe for both contexts — quotes render identically in text nodes
+  // either way, so this has no visible effect on the text-node call sites.
+  return div.innerHTML.replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 }
 
 const VIEWS = ['onboarding', 'today', 'inventory', 'parking-lot', 'recap-log', 'settings'];
