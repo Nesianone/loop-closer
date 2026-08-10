@@ -133,14 +133,34 @@ export function computeStreak(loop, today = todayISODate()) {
   return streak;
 }
 
-// Consecutive missed days for the active loop, walking back from today
-// (not including today, since today may not be over yet), stopping at
-// the loop's status_changed_date.
+// Consecutive missed days for the active loop, walking back from today,
+// stopping at the loop's status_changed_date.
+//
+// status_changed_date is a full ISO UTC timestamp (from new Date().toISOString()).
+// To find "which local calendar day" it falls on, parse it as an absolute
+// instant with `new Date(...)` and read its LOCAL year/month/date — do not
+// slice the ISO string's first 10 characters, which is the UTC calendar day
+// and can be a day off from the local one.
 export function computeConsecutiveMisses(loop, today = todayISODate()) {
-  let misses = 0;
-  let cursor = new Date(today + 'T00:00:00');
   const changedAt = new Date(loop.status_changed_date);
   const boundary = new Date(changedAt.getFullYear(), changedAt.getMonth(), changedAt.getDate());
+
+  // If today already has a settled check-in, factor it in immediately rather
+  // than only ever looking at yesterday-and-earlier. Without this, clicking
+  // "Not today" (app.js) can never trigger the stuck-or-bored check on the
+  // same click that created the 2nd consecutive miss — the check would only
+  // ever see it on a later navigation into Today, defeating the point of
+  // calling it right after the action that just produced a qualifying miss.
+  // If today has no entry yet, the day isn't over, so it's skipped exactly
+  // as before — the walk below starts at yesterday either way.
+  let misses = 0;
+  const todayEntry = loop.checkin_history.find((c) => c.date === today);
+  if (todayEntry) {
+    if (todayEntry.action_completed) return 0;
+    misses = 1;
+  }
+
+  let cursor = new Date(today + 'T00:00:00');
   while (true) {
     cursor.setDate(cursor.getDate() - 1);
     if (cursor < boundary) break;
