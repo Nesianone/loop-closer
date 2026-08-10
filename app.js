@@ -547,7 +547,89 @@ function renderRecapLog() {
   `;
 }
 function renderSettings() {
-  document.getElementById('view-settings').innerHTML = '<h2>Settings</h2><p>Coming soon.</p>';
+  const el = document.getElementById('view-settings');
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  const domainRows = data.settings.domains.map((d, i) => `
+    <li>${escapeHtml(d)} <button class="btn secondary" data-remove-domain="${i}">Remove</button></li>
+  `).join('');
+
+  el.innerHTML = `
+    <h2>Settings</h2>
+
+    <div class="card">
+      <h3>Domains</h3>
+      <ul>${domainRows}</ul>
+      <input id="new-domain-input" type="text" placeholder="New domain">
+      <button class="btn" id="add-domain-btn">Add domain</button>
+    </div>
+
+    <div class="card">
+      <h3>Weekly Review day</h3>
+      <select id="review-day-select">
+        ${dayNames.map((n, i) => `<option value="${i}" ${i === data.settings.reviewDay ? 'selected' : ''}>${n}</option>`).join('')}
+      </select>
+    </div>
+
+    <div class="card">
+      <h3>Data</h3>
+      <button class="btn" id="export-btn">Export JSON backup</button>
+      <input type="file" id="import-file" accept="application/json" style="display:none">
+      <button class="btn secondary" id="import-btn">Import JSON backup</button>
+    </div>
+  `;
+
+  el.querySelector('#add-domain-btn').addEventListener('click', () => {
+    const input = el.querySelector('#new-domain-input');
+    const value = input.value.trim();
+    if (!value || data.settings.domains.includes(value)) return;
+    data.settings.domains.push(value);
+    save();
+    renderSettings();
+  });
+
+  el.querySelectorAll('[data-remove-domain]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      data.settings.domains.splice(Number(btn.dataset.removeDomain), 1);
+      save();
+      renderSettings();
+    });
+  });
+
+  el.querySelector('#review-day-select').addEventListener('change', (e) => {
+    data.settings.reviewDay = Number(e.target.value);
+    save();
+  });
+
+  el.querySelector('#export-btn').addEventListener('click', () => {
+    const blob = new Blob([storage.exportData(data)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `loopcloser-backup-${storage.todayISODate()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  const fileInput = el.querySelector('#import-file');
+  el.querySelector('#import-btn').addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const imported = storage.importData(reader.result);
+        data = imported;
+        save();
+        alert('Import successful.');
+        showView('today');
+      } catch (e) {
+        alert('Import failed: ' + e.message);
+      }
+    };
+    reader.readAsText(file);
+  });
 }
 function renderOnboarding() {
   const el = document.getElementById('view-onboarding');
