@@ -27,6 +27,9 @@ export function createLoop(data, { title, domain, next_action, coping_plan, stat
   if (status === 'killed' && !kill_reason) {
     throw new Error('kill_reason is required when a loop is killed.');
   }
+  if (status === 'killed' && kill_reason === 'other' && !kill_note) {
+    throw new Error('kill_note is required when kill_reason is "other".');
+  }
   const now = new Date().toISOString();
   const loop = {
     id: generateId(),
@@ -80,6 +83,9 @@ export function parkLoop(data, loopId, resumption_plan) {
 export function killLoop(data, loopId, kill_reason, kill_note) {
   if (!KILL_REASONS.includes(kill_reason)) {
     throw new Error('kill_reason must be one of: ' + KILL_REASONS.join(', '));
+  }
+  if (kill_reason === 'other' && !kill_note) {
+    throw new Error('kill_note is required when kill_reason is "other".');
   }
   const loop = findLoop(data, loopId);
   loop.status = 'killed';
