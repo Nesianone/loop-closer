@@ -62,7 +62,8 @@ export function createLoop(data, { title, domain, next_action, coping_plan, stat
     ship_reflection: '',
     created_date: now,
     status_changed_date: now,
-    checkin_history: []
+    checkin_history: [],
+    action_log: next_action ? [{ date: todayISODate(), text: next_action }] : []
   };
   data.loops.push(loop);
   return loop;
@@ -139,6 +140,12 @@ export function recordCheckin(data, loopId, dateStr, action_completed) {
 export function setNextAction(data, loopId, next_action) {
   const loop = findLoop(data, loopId);
   loop.next_action = next_action;
+  if (next_action) {
+    // Loops created before this field existed won't have it in their stored
+    // data (loaded fresh from localStorage) — guard so this doesn't throw.
+    if (!loop.action_log) loop.action_log = [];
+    loop.action_log.push({ date: todayISODate(), text: next_action });
+  }
   return loop;
 }
 
