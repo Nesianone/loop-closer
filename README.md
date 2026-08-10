@@ -2,6 +2,8 @@
 
 A personal PWA that makes switching harder than finishing, and keeps an honest record of what you actually complete — instead of letting projects quietly die near the finish line.
 
+New to the app? Read the [User Guide](guide.html) — once deployed, it's at `https://<username>.github.io/<repo>/guide.html`.
+
 ## Run locally
 
 No build step. Serve the folder with any static file server (a service worker requires http(s), not `file://`):

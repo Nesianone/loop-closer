@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en-NZ">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loop Closer — Your Guide</title>
+<style>
+  :root {
+    --bg: #f6f6fb;
+    --surface: #ffffff;
+    --surface-2: #eef0f9;
+    --text: #14151c;
+    --text-dim: #5b5e6d;
+    --accent: #4f46e5;
+    --accent-ink: #3730a3;
+    --border: #dfe1ea;
+    --success: #15803d;
+    --success-bg: #ecfdf3;
+    --warning: #b45309;
+    --warning-bg: #fffbeb;
+    --danger: #b91c1c;
+    --shadow: 0 1px 2px rgba(20, 21, 28, 0.04), 0 8px 24px rgba(20, 21, 28, 0.06);
+
+    --font-display: Cambria, Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-ui: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1115;
+      --surface: #1a1d24;
+      --surface-2: #21242c;
+      --text: #f2f2f5;
+      --text-dim: #a0a4ae;
+      --accent: #4f46e5;
+      --accent-ink: #818cf8;
+      --border: #2a2d36;
+      --success: #4ade80;
+      --success-bg: #0f2419;
+      --warning: #fbbf24;
+      --warning-bg: #241a0a;
+      --danger: #f87171;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  body {
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 40rem;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 5rem;
+  }
+
+  @media (min-width: 640px) {
+    .page { padding: 3.5rem 1.5rem 6rem; }
+  }
+
+  header.masthead {
+    margin-bottom: 2.25rem;
+  }
+
+  .kicker {
+    font-family: var(--font-ui);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 5vw, 2.6rem);
+    line-height: 1.12;
+    margin: 0.4rem 0 0.6rem;
+    text-wrap: balance;
+    font-weight: 700;
+  }
+
+  .lede {
+    font-size: 1.05rem;
+    color: var(--text-dim);
+    max-width: 34rem;
+    margin: 0;
+  }
+
+  nav.toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1rem 1.15rem;
+    margin: 2rem 0 2.75rem;
+    box-shadow: var(--shadow);
+  }
+
+  nav.toc p {
+    margin: 0 0 0.6rem;
+    font-family: var(--font-ui);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  nav.toc ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  nav.toc a {
+    color: var(--text);
+    text-decoration: none;
+    display: flex;
+    gap: 0.6rem;
+    padding: 0.3rem 0.2rem;
+    border-radius: 8px;
+  }
+
+  nav.toc a:hover, nav.toc a:focus-visible {
+    background: var(--surface-2);
+  }
+
+  nav.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  nav.toc .n {
+    font-family: var(--font-ui);
+    color: var(--accent-ink);
+    font-variant-numeric: tabular-nums;
+    width: 1.4em;
+    flex: none;
+  }
+
+  section {
+    margin: 3rem 0;
+    scroll-margin-top: 1.5rem;
+  }
+
+  section .eyebrow {
+    font-family: var(--font-ui);
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    font-weight: 600;
+    display: block;
+    margin-bottom: 0.4rem;
+  }
+
+  h2 {
+    font-family: var(--font-display);
+    font-size: clamp(1.4rem, 3.4vw, 1.75rem);
+    line-height: 1.2;
+    margin: 0 0 0.85rem;
+    text-wrap: balance;
+  }
+
+  h3 {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    margin: 1.6rem 0 0.5rem;
+  }
+
+  p { margin: 0 0 1rem; max-width: 42rem; }
+  section > p:first-of-type { margin-top: 0; }
+
+  ul, ol.steps {
+    margin: 0 0 1rem;
+    padding-left: 1.3rem;
+  }
+  li { margin-bottom: 0.45rem; }
+
+  ol.steps { list-style: none; padding-left: 0; counter-reset: step; }
+  ol.steps li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 2.1rem;
+    margin-bottom: 0.7rem;
+  }
+  ol.steps li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0; top: 0.05rem;
+    width: 1.5rem; height: 1.5rem;
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--accent-ink);
+    font-family: var(--font-ui);
+    font-size: 0.78rem;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  strong { font-weight: 650; }
+
+  /* Reference chips: reproduce the app's own on-screen buttons/labels inline */
+  .chip {
+    font-family: var(--font-ui);
+    font-size: 0.82rem;
+    padding: 0.12em 0.55em;
+    border-radius: 6px;
+    white-space: nowrap;
+    display: inline-block;
+    line-height: 1.5;
+  }
+  .chip.btn { background: var(--accent); color: #fff; }
+  .chip.btn.secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+  .chip.screen { background: var(--surface-2); color: var(--accent-ink); border: 1px solid var(--border); }
+
+  .callout {
+    border-radius: 12px;
+    padding: 1rem 1.15rem;
+    margin: 1.2rem 0;
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .label {
+    font-family: var(--font-ui);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 700;
+    display: block;
+    margin-bottom: 0.35rem;
+  }
+  .callout.tip { background: var(--success-bg); border-color: var(--success); }
+  .callout.tip .label { color: var(--success); }
+  .callout.friction { background: var(--warning-bg); border-color: var(--warning); }
+  .callout.friction .label { color: var(--warning); }
+
+  /* Mock UI: small faithful reproductions of the real app's screens */
+  .mock {
+    background: #0f1115;
+    color: #f2f2f5;
+    border-radius: 16px;
+    padding: 1.1rem;
+    margin: 1.4rem 0;
+    box-shadow: var(--shadow);
+    border: 1px solid #2a2d36;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .mock .mock-label {
+    font-family: var(--font-ui);
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #7c8091;
+    margin-bottom: 0.7rem;
+  }
+  .mock .card {
+    background: #21242c;
+    border-radius: 10px;
+    padding: 0.9rem;
+    margin-bottom: 0.6rem;
+  }
+  .mock .card:last-child { margin-bottom: 0; }
+  .mock .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    background: #2a2d36;
+    color: #f2f2f5;
+    margin-right: 0.3rem;
+  }
+  .mock .badge.active { background: #4f46e5; }
+  .mock h4 { margin: 0.5rem 0 0.3rem; font-size: 0.98rem; font-family: inherit; }
+  .mock p.m { margin: 0 0 0.5rem; font-size: 0.88rem; color: #c7c9d3; }
+  .mock .mbtn {
+    display: inline-block;
+    min-height: 34px;
+    line-height: 34px;
+    padding: 0 0.85rem;
+    border-radius: 8px;
+    background: #4f46e5;
+    color: #fff;
+    font-size: 0.82rem;
+    margin: 0.15rem 0.35rem 0.15rem 0;
+  }
+  .mock .mbtn.secondary { background: #2a2d36; color: #f2f2f5; }
+  .mock ul.steplist { list-style: none; padding: 0; margin: 0.5rem 0 0; font-size: 0.85rem; color: #c7c9d3; }
+  .mock ul.steplist li { margin-bottom: 0.25rem; font-variant-numeric: tabular-nums; }
+
+  table.data {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+    margin: 1rem 0;
+  }
+  table.data th, table.data td {
+    text-align: left;
+    padding: 0.5rem 0.7rem;
+    border-bottom: 1px solid var(--border);
+  }
+  table.data th {
+    font-family: var(--font-ui);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+  .table-wrap { overflow-x: auto; }
+
+  hr.div {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 3.5rem 0 0;
+  }
+
+  footer.close {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+  }
+  footer.close p { color: var(--text-dim); }
+  footer.close .signoff {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 1.15rem;
+    color: var(--text);
+    margin-top: 1.2rem;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    a, .chip, nav.toc a { transition: background-color 0.15s ease; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="masthead">
+    <span class="kicker">Loop Closer — User Guide</span>
+    <h1>How this thing actually works</h1>
+    <p class="lede">You've got it on your phone. Here's what each screen does, why it's fussier than a normal to-do app on purpose, and how to use it day to day.</p>
+  </header>
+
+  <nav class="toc" aria-label="Table of contents">
+    <p>In this guide</p>
+    <ol>
+      <li><a href="#the-rule"><span class="n">01</span> The one rule</a></li>
+      <li><a href="#getting-started"><span class="n">02</span> Getting started</a></li>
+      <li><a href="#daily-rhythm"><span class="n">03</span> Your daily rhythm</a></li>
+      <li><a href="#when-you-stall"><span class="n">04</span> When you stall</a></li>
+      <li><a href="#finishing"><span class="n">05</span> Finishing something</a></li>
+      <li><a href="#inventory"><span class="n">06</span> Everything else, tracked</a></li>
+      <li><a href="#parking-lot"><span class="n">07</span> The idea parking lot</a></li>
+      <li><a href="#weekly-reset"><span class="n">08</span> The weekly reset</a></li>
+      <li><a href="#settings"><span class="n">09</span> Settings &amp; your data</a></li>
+    </ol>
+  </nav>
+
+  <section id="the-rule">
+    <span class="eyebrow">The Concept</span>
+    <h2>Only one Loop is ever active</h2>
+    <p>A <strong>Loop</strong> is anything with more than one step — a project, a course, a renovation. A <strong>Task</strong> is a quick one-off (renew your rego, reply to an email) that lives on your Today screen and doesn't need any of this ceremony.</p>
+    <p>The app's entire personality comes from one rule: <strong>you can only have one Loop active at a time.</strong> Everything else you're not actively doing right now has to be honestly labelled as one of two things:</p>
+    <ul>
+      <li><strong>Parked</strong> — paused, with a note on exactly where you left off, so restarting it later doesn't cost you the "where was I?" tax.</li>
+      <li><strong>Killed</strong> — you're not doing it, and you've said why.</li>
+    </ul>
+    <p>Starting something new is deliberately blocked until you've dealt with what's currently active. That friction is the whole point — it's there to stop the pattern of quietly abandoning things to chase the next idea.</p>
+  </section>
+
+  <section id="getting-started">
+    <span class="eyebrow">First Launch</span>
+    <h2>Getting started</h2>
+    <p>The first time you open the app, it asks you to dump <strong>everything you've started and not finished</strong> — courses, projects, chores, all of it. Add them one at a time.</p>
+    <p>Once you're done adding, it walks you through each one and won't let you move on until you've decided what it is:</p>
+    <ol class="steps">
+      <li><strong>Active</strong> — only one item can be this. It needs a next physical step and a coping plan ("if I get stuck on X, I'll do Y").</li>
+      <li><strong>Parked</strong> — needs a note on where you left off.</li>
+      <li><strong>Killed</strong> — needs a reason (lost interest, wasn't the right idea, hit a wall, or other).</li>
+    </ol>
+    <p>Nothing gets left undecided. Once every item has a home, you land on the Today screen.</p>
+  </section>
+
+  <section id="daily-rhythm">
+    <span class="eyebrow">Every Day</span>
+    <h2>Your daily rhythm</h2>
+    <p>The <span class="chip screen">Today</span> tab is home base. It shows your active Loop's next step and two buttons:</p>
+
+    <div class="mock" role="img" aria-label="Mock-up of the Today screen showing an active loop card">
+      <div class="mock-label">Today — what you'll actually see</div>
+      <div class="card">
+        <span class="badge active">ACTIVE</span>
+        <h4>Renovate toilet</h4>
+        <p class="m">Fill holes in wall</p>
+        <span class="mbtn">Mark done</span>
+        <span class="mbtn secondary">Not today</span>
+        <p class="m">Streak: 4 days</p>
+      </div>
+    </div>
+
+    <p>Tap <span class="chip btn">Mark done</span> and it immediately asks what tomorrow's step is — you can't leave the screen without deciding, so you're never staring at a stale "next step" from three days ago. Tap <span class="chip btn secondary">Not today</span> if you didn't get to it; that's an honest answer, not a failure.</p>
+    <p>Underneath, a <strong>Quick tasks</strong> list handles the small one-off stuff that doesn't deserve full Loop treatment. If a task sits open for two weeks, it gently asks "is this actually a Loop?" — a nudge, not a block.</p>
+    <p>The streak counter just counts consecutive days you've checked in. No badges, no points — just a number that goes up when you show up.</p>
+  </section>
+
+  <section id="when-you-stall">
+    <span class="eyebrow">The Safety Net</span>
+    <h2>When you stall</h2>
+    <p>Miss two check-ins in a row on your active Loop, and next time you open the app it stops you with one question: <strong>are you stuck, or are you losing interest?</strong> You can't dismiss it — you have to answer.</p>
+    <ul>
+      <li><strong>Stuck</strong> — it asks you to shrink the next step into something you genuinely can't fail to do.</li>
+      <li><strong>Losing interest</strong> — it makes you Park or Kill it, right there. No silent drifting.</li>
+    </ul>
+    <div class="callout friction">
+      <span class="label">Why it's like this</span>
+      <p>Most habit apps let a stalled project fade quietly. This one treats two missed days as a decision point on purpose — it's much easier to be honest about losing interest on day 3 than to admit it six months later.</p>
+    </div>
+  </section>
+
+  <section id="finishing">
+    <span class="eyebrow">The Payoff</span>
+    <h2>Finishing something</h2>
+    <p>When your active Loop is actually done, tap <span class="chip btn secondary">Ship it</span> on the Today screen. It asks one nudge question first — <em>"would you ship this today, at B-minus quality?"</em> — to stop you polishing forever, then asks why finishing it matters to you. Answer both, and it's marked <strong>Done</strong>, freeing you up to activate something else.</p>
+  </section>
+
+  <section id="inventory">
+    <span class="eyebrow">The Full Picture</span>
+    <h2>Everything else, tracked</h2>
+    <p>The <span class="chip screen">Loops</span> tab lists every Loop you've ever had, in any state, filterable by status and by domain (Career, Financial, Home, Health, Community — editable in Settings). This is also where you can:</p>
+    <ul>
+      <li><strong>Start a brand new Loop</strong> — as active (if nothing else is) or straight to parked.</li>
+      <li><strong>Reactivate a parked Loop</strong> — with a fresh (or reused) coping plan.</li>
+    </ul>
+    <p>Each Loop also keeps a quiet running log of every step it's ever had as its "next step" — so a multi-stage project like a renovation doesn't just show its current step, it shows the whole trail once you tap to expand it.</p>
+
+    <div class="mock" role="img" aria-label="Mock-up of Loop Inventory with an expanded step history">
+      <div class="mock-label">Loop Inventory — step history, expanded</div>
+      <div class="card">
+        <span class="badge active">ACTIVE</span>
+        <h4>Renovate toilet</h4>
+        <p class="m">Next: Add acoustic panel</p>
+        <span class="mbtn secondary">Hide steps (4)</span>
+        <ul class="steplist">
+          <li>10&nbsp;Aug — Fill holes in wall</li>
+          <li>11&nbsp;Aug — Add panels</li>
+          <li>13&nbsp;Aug — Paint panels</li>
+          <li>15&nbsp;Aug — Add acoustic panel</li>
+        </ul>
+      </div>
+    </div>
+
+    <p>You never have to plan those steps in advance — you only ever type the next one. The log just quietly remembers what you actually did, in order, so you can look back at a finished (or even an abandoned) project and see the real path it took.</p>
+  </section>
+
+  <section id="parking-lot">
+    <span class="eyebrow">Staying Focused</span>
+    <h2>The idea parking lot</h2>
+    <p>Get a new idea while you're mid-Loop? Don't act on it — capture it in <span class="chip screen">Ideas</span> with a title and an optional note, one tap. It's saved, but it can't hijack your attention: ideas parked here can only ever become an active Loop during your Weekly Review, never on the spot.</p>
+  </section>
+
+  <section id="weekly-reset">
+    <span class="eyebrow">Once A Week</span>
+    <h2>The weekly reset</h2>
+    <p>On the day you choose (Sunday by default), a banner appears on Today: <strong>Weekly Review is due</strong>. Opening it shows your active Loop's progress, every Loop you've killed recently (useful for spotting patterns — do you keep quitting for the same reason?), and your Idea Parking Lot.</p>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Your situation</th><th>Can you promote an idea?</th></tr></thead>
+        <tbody>
+          <tr><td>You have an active Loop</td><td>No — finish, park, or kill it first</td></tr>
+          <tr><td>You parked your Loop but never resolved it</td><td>No — resume or kill it first</td></tr>
+          <tr><td>Your last Loop is shipped or killed</td><td>Yes</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>That middle row is deliberate: simply parking your current Loop doesn't unlock a shiny new one from the Parking Lot. You have to actually resolve it. Finish reviewing and it logs a permanent entry in <span class="chip screen">Recap</span> — a scrollable, never-edited history of every week, so months from now you have a real record instead of a fuzzy memory.</p>
+  </section>
+
+  <section id="settings">
+    <span class="eyebrow">Housekeeping</span>
+    <h2>Settings &amp; your data</h2>
+    <p>In <span class="chip screen">Settings</span> you can edit your domain tags, change which day the Weekly Review lands on, and — importantly — <strong>export a JSON backup</strong> of everything.</p>
+    <div class="callout tip">
+      <span class="label">Back this up</span>
+      <p>Everything lives only in this phone's browser storage — there's no account, no cloud sync. If you switch phones, clear your browser data, or just want peace of mind, export a backup from Settings every so often. Importing it (here or on a new device) restores everything exactly as it was.</p>
+    </div>
+  </section>
+
+  <hr class="div">
+
+  <footer class="close">
+    <p>None of this is trying to be a normal productivity app. It's built around one specific, slightly annoying idea: switching should cost you something, and finishing should be visible. If a screen ever feels like it's slowing you down on purpose — it is.</p>
+    <p class="signoff">Now go close some loops.</p>
+  </footer>
+
+</div>
+</body>
+</html>
