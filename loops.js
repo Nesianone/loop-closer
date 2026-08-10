@@ -14,9 +14,27 @@ export function getActiveLoop(data) {
   return data.loops.find((l) => l.status === 'active') || null;
 }
 
+// A loop with status 'parked' AND a non-empty coping_plan was active at some
+// point (coping_plan is only ever set below, and only when a loop becomes
+// active) and was later parked instead of shipped or killed. Blocking new
+// activations while one exists stops parking from doubling as a way to grab
+// a different active loop without ever resolving the old one — exactly the
+// switching behavior this app exists to make harder. A parked loop with no
+// coping_plan was never active (e.g. created directly as parked via
+// onboarding or the New Loop modal), so it doesn't count. `excludeLoopId` lets
+// setActive exclude the loop being (re)activated from counting against itself
+// — reactivating your own parked loop is the intended resolution path, not
+// something this check should block.
+export function hasUnresolvedParkedLoop(data, excludeLoopId = null) {
+  return data.loops.some((l) => l.id !== excludeLoopId && l.status === 'parked' && l.coping_plan);
+}
+
 export function createLoop(data, { title, domain, next_action, coping_plan, status, resumption_plan, kill_reason, kill_note }) {
   if (status === 'active' && getActiveLoop(data)) {
     throw new Error('Another loop is already active. Park or kill it first.');
+  }
+  if (status === 'active' && hasUnresolvedParkedLoop(data)) {
+    throw new Error('Resume or kill your parked loop before activating a new one.');
   }
   if ((status === 'active') && !coping_plan) {
     throw new Error('coping_plan is required when a loop is active.');
@@ -61,6 +79,9 @@ export function setActive(data, loopId, coping_plan) {
   const current = getActiveLoop(data);
   if (current && current.id !== loopId) {
     throw new Error('Another loop is already active. Park or kill it first.');
+  }
+  if (hasUnresolvedParkedLoop(data, loopId)) {
+    throw new Error('Resume or kill your parked loop before activating a new one.');
   }
   if (!coping_plan && !loop.coping_plan) {
     throw new Error('coping_plan is required to activate a loop.');

@@ -2,6 +2,7 @@
 // Depends on storage.js's AppData shape; does not touch localStorage directly.
 
 import { removeParkingLotEntry } from './storage.js';
+import { hasUnresolvedParkedLoop } from './loops.js';
 
 export function getISOWeekKey(date) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -70,20 +71,6 @@ export function generateWeeklyRecap(data, today = new Date()) {
   data.weeklyRecaps.push(recap);
   data.settings.lastReviewShownWeek = getISOWeekKey(today);
   return recap;
-}
-
-// A loop with status 'parked' AND a non-empty coping_plan was active at some
-// point (coping_plan is only ever set by createLoop/setActive when a loop
-// becomes active) and was later parked instead of shipped or killed. The
-// design spec requires promotion be blocked until "the current one is done
-// or killed" — parking it doesn't count as resolving it, otherwise parking
-// your active loop becomes a loophole for grabbing a new one from the
-// Parking Lot, which is exactly the switching behavior this app exists to
-// make harder. A parked loop with no coping_plan was never active (e.g.
-// created directly as parked via onboarding or the New Loop modal), so it
-// doesn't block promotion.
-export function hasUnresolvedParkedLoop(data) {
-  return data.loops.some((l) => l.status === 'parked' && l.coping_plan);
 }
 
 // Removes the entry and hands it back to the caller, which creates the

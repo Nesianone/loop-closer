@@ -297,7 +297,7 @@ function openShipFlow(loopRef) {
 
 function openWeeklyReviewModal() {
   const activeLoop = loops.getActiveLoop(data);
-  const canPromote = !activeLoop && !weeklyReview.hasUnresolvedParkedLoop(data);
+  const canPromote = !activeLoop && !loops.hasUnresolvedParkedLoop(data);
 
   const killedRows = data.loops
     .filter((l) => l.status === 'killed')
@@ -422,6 +422,10 @@ function renderInventory() {
 
 function openNewLoopModal() {
   const hasActive = !!loops.getActiveLoop(data);
+  // Blocks the same way createLoop's own guard does — see loops.js's
+  // hasUnresolvedParkedLoop for why parking your active loop shouldn't be a
+  // way to unlock starting a different one.
+  const blockActivation = hasActive || loops.hasUnresolvedParkedLoop(data);
   const domainOptions = data.settings.domains.map((d) => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
   openModal(`
     <h3>New Loop</h3>
@@ -430,10 +434,10 @@ function openNewLoopModal() {
     <select id="new-loop-domain">${domainOptions}</select>
 
     <div class="card">
-      <h4>Make it active${hasActive ? ' — disabled, one is already active' : ''}</h4>
+      <h4>Make it active${blockActivation ? ' — disabled, resolve your active/parked loop first' : ''}</h4>
       <textarea id="new-loop-next" placeholder="Next physical step"></textarea>
       <textarea id="new-loop-coping" placeholder="If I get stuck on X, then I will Y"></textarea>
-      <button class="btn" id="new-loop-active-submit" ${hasActive ? 'disabled' : ''}>Set Active</button>
+      <button class="btn" id="new-loop-active-submit" ${blockActivation ? 'disabled' : ''}>Set Active</button>
     </div>
 
     <div class="card">
@@ -493,7 +497,19 @@ function openActivateModal(loopId) {
   document.getElementById('activate-confirm').addEventListener('click', () => {
     const coping_plan = document.getElementById('activate-coping').value.trim();
     if (!coping_plan) { alert('A coping plan is required.'); return; }
-    loops.setActive(data, loopId, coping_plan);
+    // Unlike the New Loop modal (which can precompute a single "block
+    // activation" flag before rendering), each row's Activate button here
+    // would need a per-loop check against every OTHER loop to know in advance
+    // whether activating THIS one is blocked by a different unresolved parked
+    // loop. loops.setActive already enforces that (via hasUnresolvedParkedLoop's
+    // excludeLoopId), so it's simpler and just as safe to let it throw and
+    // surface the message here rather than duplicating that check per row.
+    try {
+      loops.setActive(data, loopId, coping_plan);
+    } catch (e) {
+      alert(e.message);
+      return;
+    }
     save();
     closeModal();
     renderInventory();
