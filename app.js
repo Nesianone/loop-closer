@@ -157,6 +157,7 @@ function renderToday() {
              <button class="btn secondary" id="today-mark-not-done">Not today</button>`
         }
         <p>Streak: ${streak} day${streak === 1 ? '' : 's'}</p>
+        <button class="btn secondary" id="today-ship-btn">Ship it</button>
       </div>
     `;
   } else {
@@ -203,6 +204,8 @@ function renderToday() {
       renderToday();
       checkStuckOrBored();
     });
+    const shipBtn = el.querySelector('#today-ship-btn');
+    if (shipBtn) shipBtn.addEventListener('click', () => openShipFlow(activeLoop));
   }
 
   el.querySelectorAll('.task-toggle').forEach((cb) => {
@@ -247,6 +250,36 @@ function promptTomorrowNextAction(loopId) {
     renderToday();
     checkStuckOrBored();
   });
+}
+function openShipFlow(loopRef) {
+  openModal(`
+    <h3>Ship it?</h3>
+    <p>Would you ship "${escapeHtml(loopRef.title)}" today, at B-minus quality?</p>
+    <button class="btn success" id="ship-yes">Yes, ship it</button>
+    <button class="btn secondary" id="ship-no">Not yet</button>
+  `);
+
+  document.getElementById('ship-yes').addEventListener('click', () => {
+    openModal(`
+      <h3>Why does this matter to you?</h3>
+      <textarea id="ship-reflection" placeholder="Why does finishing this matter to you?"></textarea>
+      <button class="btn success" id="ship-confirm">Confirm — mark done</button>
+      <button class="btn secondary" id="ship-cancel">Cancel</button>
+    `);
+
+    document.getElementById('ship-cancel').addEventListener('click', closeModal);
+
+    document.getElementById('ship-confirm').addEventListener('click', () => {
+      const reflection = document.getElementById('ship-reflection').value.trim();
+      if (!reflection) { alert('This reflection is required to ship.'); return; }
+      loops.shipLoop(data, loopRef.id, reflection);
+      save();
+      closeModal();
+      renderToday();
+    });
+  });
+
+  document.getElementById('ship-no').addEventListener('click', closeModal);
 }
 function renderInventory() {
   document.getElementById('view-inventory').innerHTML = '<h2>Loop Inventory</h2><p>Coming soon.</p>';
