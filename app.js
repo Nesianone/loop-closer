@@ -182,8 +182,13 @@ function renderToday() {
     </li>
   `).join('');
 
+  const reviewBanner = weeklyReview.isReviewDue(data)
+    ? `<div class="card"><strong>Weekly Review is due.</strong> <button class="btn" id="start-review-btn">Start Review</button></div>`
+    : '';
+
   el.innerHTML = `
     <h2>Today</h2>
+    ${reviewBanner}
     ${loopSection}
     <div class="card">
       <h3>Quick tasks</h3>
@@ -192,6 +197,9 @@ function renderToday() {
       <button class="btn" id="add-task-btn">Add task</button>
     </div>
   `;
+
+  const reviewBtn = el.querySelector('#start-review-btn');
+  if (reviewBtn) reviewBtn.addEventListener('click', openWeeklyReviewModal);
 
   if (activeLoop) {
     const doneBtn = el.querySelector('#today-mark-done');
@@ -286,6 +294,75 @@ function openShipFlow(loopRef) {
   });
 
   document.getElementById('ship-no').addEventListener('click', closeModal);
+}
+
+function openWeeklyReviewModal() {
+  const activeLoop = loops.getActiveLoop(data);
+  const canPromote = !activeLoop;
+
+  const killedRows = data.loops
+    .filter((l) => l.status === 'killed')
+    .map((l) => `<li>${escapeHtml(l.title)} — ${escapeHtml(l.kill_reason)}</li>`)
+    .join('') || '<li>None</li>';
+
+  const parkingRows = data.parkingLot.map((p) => `
+    <li>
+      ${escapeHtml(p.title)}
+      ${canPromote ? `<button class="btn" data-promote-id="${p.id}">Promote to active</button>` : ''}
+    </li>
+  `).join('') || '<li>Nothing parked.</li>';
+
+  openModal(`
+    <h3>Weekly Review</h3>
+    <p>${activeLoop ? `Active loop: <strong>${escapeHtml(activeLoop.title)}</strong> — ${loops.computeStreak(activeLoop)} day streak.` : 'No active loop right now.'}</p>
+    <h4>Killed loops (for pattern spotting)</h4>
+    <ul>${killedRows}</ul>
+    <h4>Parking Lot</h4>
+    <ul id="review-parking-list">${parkingRows}</ul>
+    <button class="btn success" id="review-finish">Finish review</button>
+  `, { dismissible: false });
+
+  document.querySelectorAll('[data-promote-id]').forEach((btn) => {
+    btn.addEventListener('click', () => openPromoteModal(btn.dataset.promoteId));
+  });
+
+  document.getElementById('review-finish').addEventListener('click', () => {
+    weeklyReview.generateWeeklyRecap(data);
+    save();
+    closeModal();
+    renderToday();
+  });
+}
+
+function openPromoteModal(entryId) {
+  const entry = data.parkingLot.find((p) => p.id === entryId);
+  const domainOptions = data.settings.domains.map((d) => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+  openModal(`
+    <h3>Promote "${escapeHtml(entry.title)}"</h3>
+    <label>Domain</label>
+    <select id="promote-domain">${domainOptions}</select>
+    <textarea id="promote-next" placeholder="Next physical step"></textarea>
+    <textarea id="promote-coping" placeholder="If I get stuck on X, then I will Y"></textarea>
+    <button class="btn success" id="promote-confirm">Make it the active loop</button>
+    <button class="btn secondary" id="promote-cancel">Cancel</button>
+  `, { dismissible: false });
+
+  document.getElementById('promote-cancel').addEventListener('click', openWeeklyReviewModal);
+
+  document.getElementById('promote-confirm').addEventListener('click', () => {
+    const coping_plan = document.getElementById('promote-coping').value.trim();
+    if (!coping_plan) { alert('A coping plan is required to activate.'); return; }
+    const promoted = weeklyReview.promoteParkingLotEntry(data, entryId);
+    loops.createLoop(data, {
+      title: promoted.title,
+      domain: document.getElementById('promote-domain').value,
+      next_action: document.getElementById('promote-next').value.trim(),
+      coping_plan,
+      status: 'active'
+    });
+    save();
+    openWeeklyReviewModal();
+  });
 }
 function renderInventory() {
   const el = document.getElementById('view-inventory');
