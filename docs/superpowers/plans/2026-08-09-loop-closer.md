@@ -767,9 +767,17 @@ function withinLastNDays(isoDateString, today, n) {
   // for the same fix applied to loop status changes.
   const parsedAt = new Date(isoDateString);
   const date = new Date(parsedAt.getFullYear(), parsedAt.getMonth(), parsedAt.getDate());
-  const cutoff = new Date(today);
+  // Normalize `today` to local midnight before comparing. Without this,
+  // `date` (always local midnight) gets compared against `cutoff`/`today`
+  // still carrying today's time-of-day — since a review can run at any hour,
+  // that silently excludes the oldest day of the window on almost every real
+  // invocation (e.g. running at 2pm excludes anything before 2pm exactly n
+  // days back). Normalizing both ends to midnight makes the window an
+  // inclusive whole-calendar-days range: today and the n days before it.
+  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const cutoff = new Date(todayMidnight);
   cutoff.setDate(cutoff.getDate() - n);
-  return date >= cutoff && date <= today;
+  return date >= cutoff && date <= todayMidnight;
 }
 
 export function generateWeeklyRecap(data, today = new Date()) {
