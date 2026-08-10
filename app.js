@@ -49,7 +49,10 @@ function render() {
   else if (currentView === 'onboarding') renderOnboarding();
 }
 
-function openModal(html) {
+let modalDismissible = true;
+
+function openModal(html, { dismissible = true } = {}) {
+  modalDismissible = dismissible;
   document.getElementById('modal-content').innerHTML = html;
   document.getElementById('modal-root').classList.add('active');
 }
@@ -59,9 +62,120 @@ function closeModal() {
   document.getElementById('modal-content').innerHTML = '';
 }
 
+function checkStuckOrBored() {
+  // Filled in by Task 8.
+}
+
 // --- Screens (placeholders — replaced one at a time in later tasks) ---
 function renderToday() {
-  document.getElementById('view-today').innerHTML = '<h2>Today</h2><p>Coming soon.</p>';
+  const el = document.getElementById('view-today');
+  const activeLoop = loops.getActiveLoop(data);
+  const today = storage.todayISODate();
+
+  let loopSection;
+  if (activeLoop) {
+    const todaysEntry = activeLoop.checkin_history.find((c) => c.date === today);
+    const streak = loops.computeStreak(activeLoop, today);
+    loopSection = `
+      <div class="card">
+        <span class="badge active">ACTIVE</span> <strong>${escapeHtml(activeLoop.title)}</strong>
+        <p>${escapeHtml(activeLoop.next_action || '(no next action set)')}</p>
+        ${todaysEntry
+          ? `<p>Today: ${todaysEntry.action_completed ? 'Done ✓' : 'Not done'}</p>`
+          : `<button class="btn success" id="today-mark-done">Mark done</button>
+             <button class="btn secondary" id="today-mark-not-done">Not today</button>`
+        }
+        <p>Streak: ${streak} day${streak === 1 ? '' : 's'}</p>
+      </div>
+    `;
+  } else {
+    loopSection = `
+      <div class="card">
+        <p>No active loop right now. Go to <strong>Loops</strong> to activate a parked one, or promote a Parking Lot idea during your Weekly Review.</p>
+      </div>
+    `;
+  }
+
+  const taskRows = data.tasks.map((t) => `
+    <li>
+      <label>
+        <input type="checkbox" data-task-id="${t.id}" class="task-toggle" ${t.done ? 'checked' : ''}>
+        <span style="${t.done ? 'text-decoration: line-through;' : ''}">${escapeHtml(t.title)}</span>
+      </label>
+      ${storage.isTaskStale(t, today) ? '<div class="badge parked">Open 14+ days — is this actually a Loop?</div>' : ''}
+      <button class="btn secondary" data-delete-task-id="${t.id}">Delete</button>
+    </li>
+  `).join('');
+
+  el.innerHTML = `
+    <h2>Today</h2>
+    ${loopSection}
+    <div class="card">
+      <h3>Quick tasks</h3>
+      <ul id="task-list">${taskRows || '<li>No tasks yet.</li>'}</ul>
+      <input id="new-task-title" type="text" placeholder="New task">
+      <button class="btn" id="add-task-btn">Add task</button>
+    </div>
+  `;
+
+  if (activeLoop) {
+    const doneBtn = el.querySelector('#today-mark-done');
+    const notDoneBtn = el.querySelector('#today-mark-not-done');
+    if (doneBtn) doneBtn.addEventListener('click', () => {
+      loops.recordCheckin(data, activeLoop.id, today, true);
+      save();
+      promptTomorrowNextAction(activeLoop.id);
+    });
+    if (notDoneBtn) notDoneBtn.addEventListener('click', () => {
+      loops.recordCheckin(data, activeLoop.id, today, false);
+      save();
+      renderToday();
+      checkStuckOrBored();
+    });
+  }
+
+  el.querySelectorAll('.task-toggle').forEach((cb) => {
+    cb.addEventListener('change', () => {
+      storage.toggleTask(data, cb.dataset.taskId);
+      save();
+      renderToday();
+    });
+  });
+
+  el.querySelectorAll('[data-delete-task-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      storage.deleteTask(data, btn.dataset.deleteTaskId);
+      save();
+      renderToday();
+    });
+  });
+
+  el.querySelector('#add-task-btn').addEventListener('click', () => {
+    const input = el.querySelector('#new-task-title');
+    const title = input.value.trim();
+    if (!title) return;
+    storage.addTask(data, { title });
+    save();
+    renderToday();
+  });
+}
+
+function promptTomorrowNextAction(loopId) {
+  openModal(`
+    <h3>What's the next step?</h3>
+    <p>Set tomorrow's next action before you go.</p>
+    <textarea id="modal-next-action" placeholder="Next physical step"></textarea>
+    <button class="btn success" id="modal-next-action-submit">Save and continue</button>
+  `, { dismissible: false });
+  document.getElementById('modal-next-action-submit').addEventListener('click', () => {
+    const value = document.getElementById('modal-next-action').value.trim();
+    if (!value) return;
+    loops.setNextAction(data, loopId, value);
+    save();
+    closeModal();
+    renderToday();
+    checkStuckOrBored();
+  });
 }
 function renderInventory() {
   document.getElementById('view-inventory').innerHTML = '<h2>Loop Inventory</h2><p>Coming soon.</p>';
@@ -205,7 +319,7 @@ document.getElementById('bottom-nav').addEventListener('click', (e) => {
 });
 
 document.getElementById('modal-root').addEventListener('click', (e) => {
-  if (e.target.id === 'modal-root') closeModal();
+  if (e.target.id === 'modal-root' && modalDismissible) closeModal();
 });
 
 // --- Startup ---
