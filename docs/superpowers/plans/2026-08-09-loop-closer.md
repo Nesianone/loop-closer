@@ -494,6 +494,9 @@ export function createLoop(data, { title, domain, next_action, coping_plan, stat
   if (status === 'killed' && !kill_reason) {
     throw new Error('kill_reason is required when a loop is killed.');
   }
+  if (status === 'killed' && kill_reason === 'other' && !kill_note) {
+    throw new Error('kill_note is required when kill_reason is "other".');
+  }
   const now = new Date().toISOString();
   const loop = {
     id: generateId(),
@@ -547,6 +550,9 @@ export function parkLoop(data, loopId, resumption_plan) {
 export function killLoop(data, loopId, kill_reason, kill_note) {
   if (!KILL_REASONS.includes(kill_reason)) {
     throw new Error('kill_reason must be one of: ' + KILL_REASONS.join(', '));
+  }
+  if (kill_reason === 'other' && !kill_note) {
+    throw new Error('kill_note is required when kill_reason is "other".');
   }
   const loop = findLoop(data, loopId);
   loop.status = 'killed';
@@ -828,12 +834,29 @@ export function generateWeeklyRecap(data, today = new Date()) {
   return recap;
 }
 
+// A loop with status 'parked' AND a non-empty coping_plan was active at some
+// point (coping_plan is only ever set by createLoop/setActive when a loop
+// becomes active) and was later parked instead of shipped or killed. The
+// design spec requires promotion be blocked until "the current one is done
+// or killed" — parking it doesn't count as resolving it, otherwise parking
+// your active loop becomes a loophole for grabbing a new one from the
+// Parking Lot, which is exactly the switching behavior this app exists to
+// make harder. A parked loop with no coping_plan was never active (e.g.
+// created directly as parked via onboarding or the New Loop modal), so it
+// doesn't block promotion.
+export function hasUnresolvedParkedLoop(data) {
+  return data.loops.some((l) => l.status === 'parked' && l.coping_plan);
+}
+
 // Removes the entry and hands it back to the caller, which creates the
 // actual Loop via loops.js's createLoop (keeps loop-creation logic in one place).
 export function promoteParkingLotEntry(data, entryId) {
   const activeLoop = data.loops.find((l) => l.status === 'active');
   if (activeLoop) {
     throw new Error('Cannot promote a new active loop while one is already active.');
+  }
+  if (hasUnresolvedParkedLoop(data)) {
+    throw new Error('Resume or kill your parked loop before promoting a new one.');
   }
   const entry = data.parkingLot.find((p) => p.id === entryId);
   if (!entry) throw new Error('Parking lot entry not found: ' + entryId);
@@ -1065,6 +1088,10 @@ function renderOnboarding() {
   const item = onboardingQueue[onboardingIndex];
   const hasActive = !!loops.getActiveLoop(data);
   const domainOptions = data.settings.domains.map((d) => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+  // Generated from loops.js's KILL_REASONS (the single source of truth the domain
+  // layer validates against) instead of a hardcoded list, so the UI can never
+  // drift out of sync with what killLoop/createLoop will actually accept.
+  const killReasonOptions = loops.KILL_REASONS.map((r) => `<option value="${escapeHtml(r)}">${escapeHtml(r.charAt(0).toUpperCase() + r.slice(1))}</option>`).join('');
 
   el.innerHTML = `
     <h2>${onboardingIndex + 1} of ${onboardingQueue.length}: ${escapeHtml(item.title)}</h2>
@@ -1087,13 +1114,8 @@ function renderOnboarding() {
 
     <div class="card">
       <h3>Kill it</h3>
-      <select id="ob-kill-reason">
-        <option value="lost interest">Lost interest</option>
-        <option value="wasn't the right idea">Wasn't the right idea</option>
-        <option value="hit a wall I couldn't clear">Hit a wall I couldn't clear</option>
-        <option value="other">Other</option>
-      </select>
-      <textarea id="ob-kill-note" placeholder="Optional note"></textarea>
+      <select id="ob-kill-reason">${killReasonOptions}</select>
+      <textarea id="ob-kill-note" placeholder="Note (required if 'Other')"></textarea>
       <button class="btn danger" id="ob-kill-submit">Kill</button>
     </div>
   `;
@@ -1134,6 +1156,7 @@ function renderOnboarding() {
   el.querySelector('#ob-kill-submit').addEventListener('click', () => {
     const kill_reason = el.querySelector('#ob-kill-reason').value;
     const kill_note = el.querySelector('#ob-kill-note').value.trim();
+    if (kill_reason === 'other' && !kill_note) { alert('A note is required when killing for "other" reasons.'); return; }
     loops.createLoop(data, {
       title: item.title,
       domain: el.querySelector('#ob-domain').value,
@@ -1388,6 +1411,9 @@ function openStuckOrBoredModal(loopRef, misses) {
   });
 
   document.getElementById('sob-bored').addEventListener('click', () => {
+    // Generated from loops.js's KILL_REASONS, same as the onboarding kill form,
+    // so the UI can never drift out of sync with what killLoop actually accepts.
+    const killReasonOptions = loops.KILL_REASONS.map((r) => `<option value="${escapeHtml(r)}">${escapeHtml(r.charAt(0).toUpperCase() + r.slice(1))}</option>`).join('');
     openModal(`
       <h3>Park or kill it</h3>
       <p>Don't let it silently drift. Choose now.</p>
@@ -1398,13 +1424,8 @@ function openStuckOrBoredModal(loopRef, misses) {
       </div>
       <div class="card">
         <h4>Kill it</h4>
-        <select id="sob-kill-reason">
-          <option value="lost interest">Lost interest</option>
-          <option value="wasn't the right idea">Wasn't the right idea</option>
-          <option value="hit a wall I couldn't clear">Hit a wall I couldn't clear</option>
-          <option value="other">Other</option>
-        </select>
-        <textarea id="sob-kill-note" placeholder="Optional note"></textarea>
+        <select id="sob-kill-reason">${killReasonOptions}</select>
+        <textarea id="sob-kill-note" placeholder="Note (required if 'Other')"></textarea>
         <button class="btn danger" id="sob-kill-submit">Kill</button>
       </div>
     `, { dismissible: false });
@@ -1421,6 +1442,7 @@ function openStuckOrBoredModal(loopRef, misses) {
     document.getElementById('sob-kill-submit').addEventListener('click', () => {
       const kill_reason = document.getElementById('sob-kill-reason').value;
       const kill_note = document.getElementById('sob-kill-note').value.trim();
+      if (kill_reason === 'other' && !kill_note) { alert('A note is required when killing for "other" reasons.'); return; }
       loops.killLoop(data, loopRef.id, kill_reason, kill_note);
       save();
       closeModal();
@@ -1804,7 +1826,7 @@ And add this wiring alongside the other `renderToday` event listeners:
 ```js
 function openWeeklyReviewModal() {
   const activeLoop = loops.getActiveLoop(data);
-  const canPromote = !activeLoop;
+  const canPromote = !activeLoop && !weeklyReview.hasUnresolvedParkedLoop(data);
 
   const killedRows = data.loops
     .filter((l) => l.status === 'killed')
