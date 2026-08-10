@@ -481,9 +481,27 @@ export function getActiveLoop(data) {
   return data.loops.find((l) => l.status === 'active') || null;
 }
 
+// A loop with status 'parked' AND a non-empty coping_plan was active at some
+// point (coping_plan is only ever set below, and only when a loop becomes
+// active) and was later parked instead of shipped or killed. Blocking new
+// activations while one exists stops parking from doubling as a way to grab
+// a different active loop without ever resolving the old one — exactly the
+// switching behavior this app exists to make harder. A parked loop with no
+// coping_plan was never active (e.g. created directly as parked via
+// onboarding or the New Loop modal), so it doesn't count. `excludeLoopId` lets
+// setActive exclude the loop being (re)activated from counting against itself
+// — reactivating your own parked loop is the intended resolution path, not
+// something this check should block.
+export function hasUnresolvedParkedLoop(data, excludeLoopId = null) {
+  return data.loops.some((l) => l.id !== excludeLoopId && l.status === 'parked' && l.coping_plan);
+}
+
 export function createLoop(data, { title, domain, next_action, coping_plan, status, resumption_plan, kill_reason, kill_note }) {
   if (status === 'active' && getActiveLoop(data)) {
     throw new Error('Another loop is already active. Park or kill it first.');
+  }
+  if (status === 'active' && hasUnresolvedParkedLoop(data)) {
+    throw new Error('Resume or kill your parked loop before activating a new one.');
   }
   if ((status === 'active') && !coping_plan) {
     throw new Error('coping_plan is required when a loop is active.');
@@ -528,6 +546,9 @@ export function setActive(data, loopId, coping_plan) {
   const current = getActiveLoop(data);
   if (current && current.id !== loopId) {
     throw new Error('Another loop is already active. Park or kill it first.');
+  }
+  if (hasUnresolvedParkedLoop(data, loopId)) {
+    throw new Error('Resume or kill your parked loop before activating a new one.');
   }
   if (!coping_plan && !loop.coping_plan) {
     throw new Error('coping_plan is required to activate a loop.');
@@ -764,6 +785,7 @@ export function removeParkingLotEntry(data, entryId) {
 // Depends on storage.js's AppData shape; does not touch localStorage directly.
 
 import { removeParkingLotEntry } from './storage.js';
+import { hasUnresolvedParkedLoop } from './loops.js';
 
 export function getISOWeekKey(date) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -834,22 +856,12 @@ export function generateWeeklyRecap(data, today = new Date()) {
   return recap;
 }
 
-// A loop with status 'parked' AND a non-empty coping_plan was active at some
-// point (coping_plan is only ever set by createLoop/setActive when a loop
-// becomes active) and was later parked instead of shipped or killed. The
-// design spec requires promotion be blocked until "the current one is done
-// or killed" — parking it doesn't count as resolving it, otherwise parking
-// your active loop becomes a loophole for grabbing a new one from the
-// Parking Lot, which is exactly the switching behavior this app exists to
-// make harder. A parked loop with no coping_plan was never active (e.g.
-// created directly as parked via onboarding or the New Loop modal), so it
-// doesn't block promotion.
-export function hasUnresolvedParkedLoop(data) {
-  return data.loops.some((l) => l.status === 'parked' && l.coping_plan);
-}
-
 // Removes the entry and hands it back to the caller, which creates the
 // actual Loop via loops.js's createLoop (keeps loop-creation logic in one place).
+// hasUnresolvedParkedLoop (imported from loops.js, the same guard createLoop/
+// setActive enforce for every other activation path) is checked here too so a
+// blocked promotion fails before the parking-lot entry is removed, rather than
+// removing it and then failing later when the caller calls createLoop.
 export function promoteParkingLotEntry(data, entryId) {
   const activeLoop = data.loops.find((l) => l.status === 'active');
   if (activeLoop) {
@@ -1639,6 +1651,10 @@ function renderInventory() {
 ```js
 function openNewLoopModal() {
   const hasActive = !!loops.getActiveLoop(data);
+  // Blocks the same way createLoop's own guard does — see loops.js's
+  // hasUnresolvedParkedLoop for why parking your active loop shouldn't be a
+  // way to unlock starting a different one.
+  const blockActivation = hasActive || loops.hasUnresolvedParkedLoop(data);
   const domainOptions = data.settings.domains.map((d) => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
   openModal(`
     <h3>New Loop</h3>
@@ -1647,10 +1663,10 @@ function openNewLoopModal() {
     <select id="new-loop-domain">${domainOptions}</select>
 
     <div class="card">
-      <h4>Make it active${hasActive ? ' — disabled, one is already active' : ''}</h4>
+      <h4>Make it active${blockActivation ? ' — disabled, resolve your active/parked loop first' : ''}</h4>
       <textarea id="new-loop-next" placeholder="Next physical step"></textarea>
       <textarea id="new-loop-coping" placeholder="If I get stuck on X, then I will Y"></textarea>
-      <button class="btn" id="new-loop-active-submit" ${hasActive ? 'disabled' : ''}>Set Active</button>
+      <button class="btn" id="new-loop-active-submit" ${blockActivation ? 'disabled' : ''}>Set Active</button>
     </div>
 
     <div class="card">
@@ -1710,7 +1726,19 @@ function openActivateModal(loopId) {
   document.getElementById('activate-confirm').addEventListener('click', () => {
     const coping_plan = document.getElementById('activate-coping').value.trim();
     if (!coping_plan) { alert('A coping plan is required.'); return; }
-    loops.setActive(data, loopId, coping_plan);
+    // Unlike the New Loop modal (which can precompute a single "block
+    // activation" flag before rendering), each row's Activate button here
+    // would need a per-loop check against every OTHER loop to know in advance
+    // whether activating THIS one is blocked by a different unresolved parked
+    // loop. loops.setActive already enforces that (via hasUnresolvedParkedLoop's
+    // excludeLoopId), so it's simpler and just as safe to let it throw and
+    // surface the message here rather than duplicating that check per row.
+    try {
+      loops.setActive(data, loopId, coping_plan);
+    } catch (e) {
+      alert(e.message);
+      return;
+    }
     save();
     closeModal();
     renderInventory();
@@ -1826,7 +1854,7 @@ And add this wiring alongside the other `renderToday` event listeners:
 ```js
 function openWeeklyReviewModal() {
   const activeLoop = loops.getActiveLoop(data);
-  const canPromote = !activeLoop && !weeklyReview.hasUnresolvedParkedLoop(data);
+  const canPromote = !activeLoop && !loops.hasUnresolvedParkedLoop(data);
 
   const killedRows = data.loops
     .filter((l) => l.status === 'killed')
