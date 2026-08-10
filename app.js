@@ -251,6 +251,9 @@ function promptTomorrowNextAction(loopId) {
     checkStuckOrBored();
   });
 }
+// Shipping is voluntary (unlike the forced stuck/onboarding modals elsewhere
+// in this file), so these openModal calls deliberately omit { dismissible: false }
+// and use the default dismissible:true — the user can back out at any point.
 function openShipFlow(loopRef) {
   openModal(`
     <h3>Ship it?</h3>
