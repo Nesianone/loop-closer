@@ -424,7 +424,32 @@ function openActivateModal(loopId) {
   });
 }
 function renderParkingLot() {
-  document.getElementById('view-parking-lot').innerHTML = '<h2>Idea Parking Lot</h2><p>Coming soon.</p>';
+  const el = document.getElementById('view-parking-lot');
+  const rows = data.parkingLot.map((p) => `
+    <div class="card">
+      <h3>${escapeHtml(p.title)}</h3>
+      ${p.note ? `<p>${escapeHtml(p.note)}</p>` : ''}
+      <p class="badge">Captured ${new Date(p.created_date).toLocaleDateString('en-NZ')}</p>
+    </div>
+  `).join('');
+
+  el.innerHTML = `
+    <h2>Idea Parking Lot</h2>
+    <p>Capture it here so it doesn't hijack your focus. Ideas can only become an active loop during your Weekly Review.</p>
+    <input id="pl-title" type="text" placeholder="Idea title">
+    <textarea id="pl-note" placeholder="Optional note"></textarea>
+    <button class="btn" id="pl-add">Capture idea</button>
+    ${rows || '<p>Nothing parked yet.</p>'}
+  `;
+
+  el.querySelector('#pl-add').addEventListener('click', () => {
+    const title = el.querySelector('#pl-title').value.trim();
+    if (!title) return;
+    const note = el.querySelector('#pl-note').value.trim();
+    storage.addParkingLotEntry(data, { title, note });
+    save();
+    renderParkingLot();
+  });
 }
 function renderRecapLog() {
   document.getElementById('view-recap-log').innerHTML = '<h2>Weekly Recap Log</h2><p>Coming soon.</p>';
