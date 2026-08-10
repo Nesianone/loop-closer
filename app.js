@@ -388,7 +388,7 @@ function renderInventory() {
         <span class="badge">${escapeHtml(l.domain)}</span>
         <h3>${escapeHtml(l.title)}</h3>
         <p>${detail}</p>
-        ${l.status === 'parked' && !hasActive ? `<button class="btn" data-activate-id="${l.id}">Activate</button>` : ''}
+        ${l.status === 'parked' && !hasActive && !loops.hasUnresolvedParkedLoop(data, l.id) ? `<button class="btn" data-activate-id="${l.id}">Activate</button>` : ''}
       </div>
     `;
   }).join('');
@@ -687,6 +687,12 @@ function renderOnboarding() {
 
   const item = onboardingQueue[onboardingIndex];
   const hasActive = !!loops.getActiveLoop(data);
+  // Normally unreachable during a fresh onboarding pass (its own Park path
+  // never sets coping_plan, so it can't produce an unresolved parked loop),
+  // but reachable if a JSON backup is imported with settings.onboarded:false
+  // while already containing a previously-active, now-parked loop — so this
+  // is checked the same way New Loop's "Set Active" is, not skipped.
+  const blockActivation = hasActive || loops.hasUnresolvedParkedLoop(data);
   const domainOptions = data.settings.domains.map((d) => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
   // Generated from loops.js's KILL_REASONS (the single source of truth the domain
   // layer validates against) instead of a hardcoded list, so the UI can never
@@ -700,10 +706,10 @@ function renderOnboarding() {
     <select id="ob-domain">${domainOptions}</select>
 
     <div class="card">
-      <h3>Make it active${hasActive ? ' — disabled, one is already active' : ''}</h3>
+      <h3>Make it active${blockActivation ? ' — disabled, resolve your active/parked loop first' : ''}</h3>
       <textarea id="ob-active-next" placeholder="Next physical step"></textarea>
       <textarea id="ob-active-coping" placeholder="If I get stuck on X, then I will Y"></textarea>
-      <button class="btn" id="ob-active-submit" ${hasActive ? 'disabled' : ''}>Set Active</button>
+      <button class="btn" id="ob-active-submit" ${blockActivation ? 'disabled' : ''}>Set Active</button>
     </div>
 
     <div class="card">
@@ -729,13 +735,18 @@ function renderOnboarding() {
     const next_action = el.querySelector('#ob-active-next').value.trim();
     const coping_plan = el.querySelector('#ob-active-coping').value.trim();
     if (!coping_plan) { alert('A coping plan is required to make a loop active.'); return; }
-    loops.createLoop(data, {
-      title: item.title,
-      domain: el.querySelector('#ob-domain').value,
-      next_action,
-      coping_plan,
-      status: 'active'
-    });
+    try {
+      loops.createLoop(data, {
+        title: item.title,
+        domain: el.querySelector('#ob-domain').value,
+        next_action,
+        coping_plan,
+        status: 'active'
+      });
+    } catch (e) {
+      alert(e.message);
+      return;
+    }
     save();
     advance();
   });
