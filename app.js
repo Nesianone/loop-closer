@@ -17,6 +17,10 @@ function escapeHtml(str) {
 const VIEWS = ['onboarding', 'today', 'inventory', 'parking-lot', 'recap-log', 'settings'];
 let currentView = 'today';
 
+let onboardingQueue = [];
+let onboardingIndex = 0;
+let onboardingPhase = 'collect'; // 'collect' | 'decide'
+
 function showView(viewName) {
   currentView = viewName;
   for (const v of VIEWS) {
@@ -65,7 +69,126 @@ function renderSettings() {
   document.getElementById('view-settings').innerHTML = '<h2>Settings</h2><p>Coming soon.</p>';
 }
 function renderOnboarding() {
-  document.getElementById('view-onboarding').innerHTML = '<h2>Onboarding</h2><p>Coming soon.</p>';
+  const el = document.getElementById('view-onboarding');
+
+  if (onboardingPhase === 'collect') {
+    el.innerHTML = `
+      <h2>What's unfinished?</h2>
+      <p>List everything you've started and not finished — courses, projects, chores. One at a time. We'll decide what happens to each before you move on.</p>
+      <ul id="onboarding-list">${onboardingQueue.map((q) => `<li>${escapeHtml(q.title)}</li>`).join('')}</ul>
+      <input id="onboarding-input" type="text" placeholder="e.g. Spanish course on Duolingo">
+      <button class="btn" id="onboarding-add">Add</button>
+      <button class="btn success" id="onboarding-continue" ${onboardingQueue.length === 0 ? 'disabled' : ''}>Done adding (${onboardingQueue.length}) — start deciding</button>
+    `;
+    el.querySelector('#onboarding-add').addEventListener('click', () => {
+      const input = el.querySelector('#onboarding-input');
+      const title = input.value.trim();
+      if (!title) return;
+      onboardingQueue.push({ title });
+      renderOnboarding();
+    });
+    el.querySelector('#onboarding-continue').addEventListener('click', () => {
+      if (onboardingQueue.length === 0) return;
+      onboardingPhase = 'decide';
+      onboardingIndex = 0;
+      renderOnboarding();
+    });
+    return;
+  }
+
+  // decide phase
+  if (onboardingIndex >= onboardingQueue.length) {
+    data.settings.onboarded = true;
+    save();
+    onboardingQueue = [];
+    onboardingIndex = 0;
+    onboardingPhase = 'collect';
+    showView('today');
+    return;
+  }
+
+  const item = onboardingQueue[onboardingIndex];
+  const hasActive = !!loops.getActiveLoop(data);
+  const domainOptions = data.settings.domains.map((d) => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+
+  el.innerHTML = `
+    <h2>${onboardingIndex + 1} of ${onboardingQueue.length}: ${escapeHtml(item.title)}</h2>
+    <p>Decide now — active, parked, or killed. Nothing gets left undecided.</p>
+    <label>Domain</label>
+    <select id="ob-domain">${domainOptions}</select>
+
+    <div class="card">
+      <h3>Make it active${hasActive ? ' — disabled, one is already active' : ''}</h3>
+      <textarea id="ob-active-next" placeholder="Next physical step"></textarea>
+      <textarea id="ob-active-coping" placeholder="If I get stuck on X, then I will Y"></textarea>
+      <button class="btn" id="ob-active-submit" ${hasActive ? 'disabled' : ''}>Set Active</button>
+    </div>
+
+    <div class="card">
+      <h3>Park it</h3>
+      <textarea id="ob-park-resume" placeholder="Exactly where I left off and what I'll do first when I resume"></textarea>
+      <button class="btn secondary" id="ob-park-submit">Park</button>
+    </div>
+
+    <div class="card">
+      <h3>Kill it</h3>
+      <select id="ob-kill-reason">
+        <option value="lost interest">Lost interest</option>
+        <option value="wasn't the right idea">Wasn't the right idea</option>
+        <option value="hit a wall I couldn't clear">Hit a wall I couldn't clear</option>
+        <option value="other">Other</option>
+      </select>
+      <textarea id="ob-kill-note" placeholder="Optional note"></textarea>
+      <button class="btn danger" id="ob-kill-submit">Kill</button>
+    </div>
+  `;
+
+  function advance() {
+    onboardingIndex++;
+    renderOnboarding();
+  }
+
+  el.querySelector('#ob-active-submit').addEventListener('click', () => {
+    const next_action = el.querySelector('#ob-active-next').value.trim();
+    const coping_plan = el.querySelector('#ob-active-coping').value.trim();
+    if (!coping_plan) { alert('A coping plan is required to make a loop active.'); return; }
+    loops.createLoop(data, {
+      title: item.title,
+      domain: el.querySelector('#ob-domain').value,
+      next_action,
+      coping_plan,
+      status: 'active'
+    });
+    save();
+    advance();
+  });
+
+  el.querySelector('#ob-park-submit').addEventListener('click', () => {
+    const resumption_plan = el.querySelector('#ob-park-resume').value.trim();
+    if (!resumption_plan) { alert('A resumption plan is required to park a loop.'); return; }
+    loops.createLoop(data, {
+      title: item.title,
+      domain: el.querySelector('#ob-domain').value,
+      status: 'parked',
+      resumption_plan
+    });
+    save();
+    advance();
+  });
+
+  el.querySelector('#ob-kill-submit').addEventListener('click', () => {
+    const kill_reason = el.querySelector('#ob-kill-reason').value;
+    const kill_note = el.querySelector('#ob-kill-note').value.trim();
+    loops.createLoop(data, {
+      title: item.title,
+      domain: el.querySelector('#ob-domain').value,
+      status: 'killed',
+      kill_reason,
+      kill_note
+    });
+    save();
+    advance();
+  });
 }
 
 // --- Nav & modal wiring ---
