@@ -41,7 +41,7 @@ function showView(viewName) {
 }
 
 function render() {
-  if (currentView === 'today') renderToday();
+  if (currentView === 'today') { renderToday(); checkStuckOrBored(); }
   else if (currentView === 'inventory') renderInventory();
   else if (currentView === 'parking-lot') renderParkingLot();
   else if (currentView === 'recap-log') renderRecapLog();
@@ -63,7 +63,78 @@ function closeModal() {
 }
 
 function checkStuckOrBored() {
-  // Filled in by Task 8.
+  const activeLoop = loops.getActiveLoop(data);
+  if (!activeLoop) return;
+  const misses = loops.computeConsecutiveMisses(activeLoop);
+  if (misses < 2) return;
+  openStuckOrBoredModal(activeLoop, misses);
+}
+
+function openStuckOrBoredModal(loopRef, misses) {
+  openModal(`
+    <h3>Stuck or losing interest?</h3>
+    <p>"${escapeHtml(loopRef.title)}" has ${misses} missed check-ins in a row. What's going on?</p>
+    <button class="btn" id="sob-stuck">I'm stuck</button>
+    <button class="btn danger" id="sob-bored">Losing interest</button>
+  `, { dismissible: false });
+
+  document.getElementById('sob-stuck').addEventListener('click', () => {
+    openModal(`
+      <h3>Shrink the next action</h3>
+      <p>Make it smaller — something you genuinely can't fail to do.</p>
+      <textarea id="shrink-next-action" placeholder="Smaller next step">${escapeHtml(loopRef.next_action)}</textarea>
+      <button class="btn success" id="shrink-submit">Save</button>
+    `, { dismissible: false });
+    document.getElementById('shrink-submit').addEventListener('click', () => {
+      const value = document.getElementById('shrink-next-action').value.trim();
+      if (!value) return;
+      loops.setNextAction(data, loopRef.id, value);
+      save();
+      closeModal();
+      renderToday();
+    });
+  });
+
+  document.getElementById('sob-bored').addEventListener('click', () => {
+    openModal(`
+      <h3>Park or kill it</h3>
+      <p>Don't let it silently drift. Choose now.</p>
+      <div class="card">
+        <h4>Park it</h4>
+        <textarea id="sob-park-resume" placeholder="Exactly where I left off and what I'll do first when I resume"></textarea>
+        <button class="btn secondary" id="sob-park-submit">Park</button>
+      </div>
+      <div class="card">
+        <h4>Kill it</h4>
+        <select id="sob-kill-reason">
+          <option value="lost interest">Lost interest</option>
+          <option value="wasn't the right idea">Wasn't the right idea</option>
+          <option value="hit a wall I couldn't clear">Hit a wall I couldn't clear</option>
+          <option value="other">Other</option>
+        </select>
+        <textarea id="sob-kill-note" placeholder="Optional note"></textarea>
+        <button class="btn danger" id="sob-kill-submit">Kill</button>
+      </div>
+    `, { dismissible: false });
+
+    document.getElementById('sob-park-submit').addEventListener('click', () => {
+      const resumption_plan = document.getElementById('sob-park-resume').value.trim();
+      if (!resumption_plan) { alert('A resumption plan is required.'); return; }
+      loops.parkLoop(data, loopRef.id, resumption_plan);
+      save();
+      closeModal();
+      renderToday();
+    });
+
+    document.getElementById('sob-kill-submit').addEventListener('click', () => {
+      const kill_reason = document.getElementById('sob-kill-reason').value;
+      const kill_note = document.getElementById('sob-kill-note').value.trim();
+      loops.killLoop(data, loopRef.id, kill_reason, kill_note);
+      save();
+      closeModal();
+      renderToday();
+    });
+  });
 }
 
 // --- Screens (placeholders — replaced one at a time in later tasks) ---
