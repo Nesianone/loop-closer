@@ -2072,6 +2072,8 @@ or
 
 Open the printed URL, then use your browser's "Add to Home Screen" / "Install" option to install it as an app.
 
+**If you edit the code and your changes don't show up**, the service worker's cache-first strategy is serving the old files. In devtools, go to Application → Service Workers → Unregister, then Application → Storage → Clear site data, and reload.
+
 ## Deploy to GitHub Pages
 
 1. Push this folder to a GitHub repository.
