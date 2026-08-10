@@ -529,7 +529,22 @@ function renderParkingLot() {
   });
 }
 function renderRecapLog() {
-  document.getElementById('view-recap-log').innerHTML = '<h2>Weekly Recap Log</h2><p>Coming soon.</p>';
+  const el = document.getElementById('view-recap-log');
+  const rows = [...data.weeklyRecaps].reverse().map((r) => `
+    <div class="card">
+      <p class="badge">${new Date(r.date).toLocaleDateString('en-NZ')}</p>
+      <p>${escapeHtml(r.active_loop_summary)}</p>
+      ${r.parked_or_killed.length ? `<p>Parked/killed: ${r.parked_or_killed.map((x) => escapeHtml(x.title) + ' (' + escapeHtml(x.status) + ')').join(', ')}</p>` : ''}
+      ${r.new_parking_lot_entries.length ? `<p>New ideas captured: ${r.new_parking_lot_entries.map(escapeHtml).join(', ')}</p>` : ''}
+      ${r.tasks_completed.length ? `<p>Tasks completed: ${r.tasks_completed.map(escapeHtml).join(', ')}</p>` : ''}
+    </div>
+  `).join('');
+
+  el.innerHTML = `
+    <h2>Weekly Recap Log</h2>
+    <p>Permanent record — never edited or deleted.</p>
+    ${rows || '<p>No recaps yet. They appear after your first Weekly Review.</p>'}
+  `;
 }
 function renderSettings() {
   document.getElementById('view-settings').innerHTML = '<h2>Settings</h2><p>Coming soon.</p>';
