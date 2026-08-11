@@ -208,7 +208,7 @@ textarea { min-height: 80px; }
 .stat {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: 16px; /* matches the mockup's stat tile exactly — distinct from both --radius (cards, 20px) and --radius-sm (buttons/inputs, 12px), not worth a new named token for this one use site */
   padding: 14px 8px;
   text-align: center;
 }
@@ -309,8 +309,8 @@ textarea { min-height: 80px; }
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
-  background: var(--color-border);
-  color: var(--color-text);
+  background: var(--color-surface-2); /* matches the mockup's domain-tag background; used by domain tags, the only badges with no status modifier below */
+  color: var(--color-text); /* NOT dimmed to match the mockup's domain-tag text exactly — .badge.active/.parked/.killed/.done below only override background, not color, so they inherit this value and need it to stay bright for contrast against their saturated backgrounds */
 }
 
 .badge.active { background: var(--color-primary); }
