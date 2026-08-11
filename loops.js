@@ -167,6 +167,22 @@ export function computeStreak(loop, today = todayISODate()) {
   return streak;
 }
 
+// Count of completed check-ins in the trailing 7-day window (today and the
+// 6 days before it, inclusive) — used for the "X/7 this week" stat tile on
+// Today. Unlike computeStreak, a gap doesn't stop the count early; this is
+// a simple count over a fixed window, not a consecutive-run calculation.
+export function computeWeekCompletionCount(loop, today = todayISODate()) {
+  let count = 0;
+  let cursor = new Date(today + 'T00:00:00');
+  for (let i = 0; i < 7; i++) {
+    const dateStr = formatLocalDate(cursor);
+    const entry = loop.checkin_history.find((c) => c.date === dateStr);
+    if (entry && entry.action_completed) count++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return count;
+}
+
 // Consecutive missed days for the active loop, walking back from today,
 // stopping at the loop's status_changed_date.
 //
