@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en-NZ">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loop Closer — Redesign Mockup</title>
+<style>
+  :root {
+    --bg: #f5f5f8;
+    --page: #eceef4;
+    --phone-bg: #0a0b0f;
+    --surface: #16181f;
+    --surface-2: #1e212b;
+    --text: #f5f5f7;
+    --text-dim: #8b8fa3;
+    --accent: #4f46e5;
+    --accent-soft: #a5b4fc;
+    --accent2: #06b6d4;
+    --accent3: #f59e0b;
+    --success: #22c55e;
+    --danger: #f87171;
+    --border: #262a35;
+    --ink: #14151c;
+    --ink-dim: #5b5e6d;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0b0c10; --page: #0f1115; --ink: #f2f2f5; --ink-dim: #9a9dab; }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+  .intro { max-width: 640px; margin-bottom: 2.25rem; }
+  .kicker { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+  h1 { font-size: clamp(1.6rem, 4vw, 2.1rem); font-weight: 800; letter-spacing: -0.01em; margin: 0.3rem 0 0.6rem; }
+  .intro p { color: var(--ink-dim); line-height: 1.55; margin: 0; }
+
+  .switcher { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+  .switcher button {
+    font-family: inherit; font-size: 0.85rem; font-weight: 600;
+    padding: 0.5rem 1rem; border-radius: 999px; border: 1px solid transparent;
+    background: var(--page); color: var(--ink-dim); cursor: pointer;
+  }
+  .switcher button.active { background: var(--accent); color: #fff; }
+
+  .stage { display: flex; gap: 2rem; flex-wrap: wrap; align-items: flex-start; }
+
+  .phone {
+    width: 360px;
+    background: var(--phone-bg);
+    border-radius: 40px;
+    padding: 14px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2);
+    flex: none;
+  }
+  .screen {
+    background: var(--phone-bg);
+    border-radius: 28px;
+    overflow: hidden;
+    color: #f5f5f7;
+    min-height: 680px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .notch {
+    height: 28px; display: flex; align-items: center; justify-content: center;
+  }
+  .notch::before { content: ""; width: 90px; height: 22px; background: #000; border-radius: 14px; }
+
+  .content { flex: 1; padding: 0.5rem 1.1rem 1rem; overflow: hidden; }
+
+  .app-title { font-size: 1.9rem; font-weight: 900; letter-spacing: -0.03em; margin: 0.3rem 0 0.1rem; }
+  .app-sub { font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: #6b6f82; font-weight: 700; margin-bottom: 1.1rem; }
+
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.55rem; margin-bottom: 1.3rem; }
+  .stat {
+    background: var(--surface); border-radius: 16px; padding: 0.85rem 0.5rem;
+    text-align: center; border: 1px solid var(--border);
+  }
+  .stat .num { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+  .stat .lbl { font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: #6b6f82; margin-top: 0.35rem; font-weight: 700; }
+  .stat.indigo .num { color: var(--accent-soft); }
+  .stat.cyan .num { color: var(--accent2); }
+  .stat.amber .num { color: var(--accent3); }
+
+  .divider { display: flex; align-items: center; gap: 0.6rem; margin: 1.3rem 0 0.6rem; }
+  .divider span { font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase; color: #6b6f82; font-weight: 700; white-space: nowrap; }
+  .divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+  .card {
+    background: var(--surface); border-radius: 20px; padding: 1.1rem;
+    margin-bottom: 0.75rem; border: 1px solid var(--border);
+  }
+  .badge {
+    display: inline-block; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.04em;
+    padding: 0.22em 0.65em; border-radius: 999px; margin-right: 0.35rem;
+  }
+  .badge.active { background: var(--accent); color: #fff; }
+  .badge.domain { background: var(--surface-2); color: #c7c9d3; }
+  .card h3 { font-size: 1.08rem; font-weight: 800; margin: 0.6rem 0 0.25rem; letter-spacing: -0.01em; }
+  .card p.m { font-size: 0.86rem; color: #b7bac6; margin: 0 0 0.7rem; line-height: 1.4; }
+
+  .pillrow { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.2rem; }
+  .pill {
+    flex: 1; min-width: 0; text-align: center; padding: 0.55rem 0.3rem; border-radius: 12px;
+    font-size: 0.78rem; font-weight: 700; background: var(--surface-2); color: #d5d7e0;
+    border: 1px solid var(--border); cursor: pointer;
+  }
+  .pill.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .ghostbtn {
+    display: block; text-align: center; width: 100%; padding: 0.55rem;
+    border-radius: 12px; border: 1.5px dashed var(--border); color: #9a9dab;
+    font-size: 0.8rem; font-weight: 600; background: transparent;
+  }
+
+  .filterrow { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+  .filterrow select {
+    flex: 1; background: var(--surface); color: #f5f5f7; border: 1px solid var(--border);
+    border-radius: 12px; padding: 0.5rem 0.6rem; font-size: 0.8rem; font-family: inherit;
+  }
+
+  .steps-toggle {
+    font-size: 0.76rem; font-weight: 700; color: var(--accent-soft);
+    background: var(--surface-2); border-radius: 10px; padding: 0.4rem 0.6rem;
+    display: inline-block; margin-top: 0.3rem;
+  }
+  .steplist { list-style: none; padding: 0; margin: 0.6rem 0 0; }
+  .steplist li {
+    font-size: 0.78rem; color: #c7c9d3; padding: 0.35rem 0; border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between; font-variant-numeric: tabular-nums;
+  }
+  .steplist li span.d { color: #6b6f82; }
+
+  nav.bottom {
+    display: flex; border-top: 1px solid var(--border); padding: 0.6rem 0.2rem 0.5rem;
+    background: var(--phone-bg);
+  }
+  nav.bottom .item {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+    color: #6b6f82; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.02em;
+  }
+  nav.bottom .item.active { color: var(--accent-soft); }
+  nav.bottom svg { width: 20px; height: 20px; }
+
+  .notes {
+    flex: 1; min-width: 280px;
+  }
+  .notes h2 { font-size: 1rem; font-weight: 800; margin: 0 0 0.6rem; }
+  .notes ul { padding-left: 1.1rem; margin: 0 0 1.5rem; }
+  .notes li { margin-bottom: 0.5rem; color: var(--ink-dim); font-size: 0.92rem; line-height: 1.5; }
+  .notes li strong { color: var(--ink); }
+  .swatches { display: flex; gap: 0.5rem; margin-top: 0.4rem; flex-wrap: wrap; }
+  .swatch { width: 100%; max-width: 320px; display: flex; align-items: center; gap: 0.6rem; font-size: 0.82rem; color: var(--ink-dim); margin-bottom: 0.4rem;}
+  .swatch .sw { width: 22px; height: 22px; border-radius: 6px; flex: none; border: 1px solid rgba(0,0,0,0.1); }
+
+  .screen-panel { display: none; }
+  .screen-panel.active { display: flex; flex-direction: column; height: 100%; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="intro">
+    <span class="kicker">Design Proposal · Not Live Yet</span>
+    <h1>A bolder look for Loop Closer</h1>
+    <p>Same app, same rules — heavier display type, colour-coded stat tiles, real rounded cards, section dividers, and icons in the bottom nav. This is a mockup to react to before any real code changes.</p>
+  </div>
+
+  <div class="switcher">
+    <button class="active" data-screen="today">Today</button>
+    <button data-screen="inventory">Loop Inventory</button>
+  </div>
+
+  <div class="stage">
+    <div class="phone">
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="content">
+
+          <div class="screen-panel active" id="panel-today">
+            <div class="app-title">Today</div>
+            <div class="app-sub">Tuesday · 11 August</div>
+
+            <div class="stat-row">
+              <div class="stat indigo"><div class="num">4</div><div class="lbl">Day streak</div></div>
+              <div class="stat cyan"><div class="num">5/7</div><div class="lbl">This week</div></div>
+              <div class="stat amber"><div class="num">2</div><div class="lbl">Tasks open</div></div>
+            </div>
+
+            <div class="divider"><span>Active Loop</span></div>
+            <div class="card">
+              <span class="badge active">ACTIVE</span><span class="badge domain">Home/Physical</span>
+              <h3>Renovate toilet</h3>
+              <p class="m">Fill holes in wall</p>
+              <div class="pillrow">
+                <div class="pill primary">Mark done</div>
+                <div class="pill">Not today</div>
+              </div>
+            </div>
+
+            <div class="divider"><span>Quick tasks</span></div>
+            <div class="card">
+              <p class="m" style="margin-bottom:0.4rem">☐ Renew car rego</p>
+              <p class="m" style="margin-bottom:0">☑ <span style="text-decoration:line-through;color:#6b6f82">Reply to Sarah</span></p>
+            </div>
+          </div>
+
+          <div class="screen-panel" id="panel-inventory">
+            <div class="app-title">Loops</div>
+            <div class="app-sub">Everything, at every stage</div>
+
+            <div class="filterrow">
+              <select><option>Status: All</option></select>
+              <select><option>Domain: All</option></select>
+            </div>
+
+            <div class="card">
+              <span class="badge active">ACTIVE</span><span class="badge domain">Home/Physical</span>
+              <h3>Renovate toilet</h3>
+              <p class="m">Next: Add acoustic panel</p>
+              <div class="steps-toggle">Hide steps (4)</div>
+              <ul class="steplist">
+                <li><span>Fill holes in wall</span><span class="d">10 Aug</span></li>
+                <li><span>Add panels</span><span class="d">11 Aug</span></li>
+                <li><span>Paint panels</span><span class="d">13 Aug</span></li>
+                <li><span>Add acoustic panel</span><span class="d">15 Aug</span></li>
+              </ul>
+            </div>
+
+            <div class="card">
+              <span class="badge domain" style="background:#3a2a12;color:#f5b756">PARKED</span><span class="badge domain">Career</span>
+              <h3>Excel course</h3>
+              <p class="m">Resume: pick up at pivot tables, module 4</p>
+              <div class="ghostbtn">Activate</div>
+            </div>
+          </div>
+
+        </div>
+        <nav class="bottom">
+          <div class="item active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>
+            Today
+          </div>
+          <div class="item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h5"/></svg>
+            Loops
+          </div>
+          <div class="item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2v6l-5 9a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-5-9V2"/></svg>
+            Ideas
+          </div>
+          <div class="item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9M12 19V5M20 19v-6"/></svg>
+            Recap
+          </div>
+          <div class="item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+            Settings
+          </div>
+        </nav>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h2>What changed from the current version</h2>
+      <ul>
+        <li><strong>Bigger, heavier headings.</strong> Screen titles ("Today", "Loops") now use a heavy weight with tighter letter-spacing, so the app has a real visual anchor instead of a plain heading.</li>
+        <li><strong>Colour-coded stat tiles.</strong> Streak, this-week check-ins, and open tasks each get their own tile and colour, at a glance — mirrors how the reference app surfaces numbers up top.</li>
+        <li><strong>Section dividers.</strong> Small caps label + rule, used to group "Active Loop" from "Quick tasks", and similar groupings on other screens — gives the eye a resting point.</li>
+        <li><strong>Rounder, deeper cards.</strong> 20px corners instead of 10px, a touch more padding, a subtle border instead of a flat fill.</li>
+        <li><strong>Pill-shaped action buttons</strong> inside cards rather than full-width rectangular buttons — reads lighter, still meets the 44px tap target.</li>
+        <li><strong>Icons in the bottom nav</strong>, not just text labels — quicker to scan, feels like a "real" app.</li>
+        <li><strong>Kept:</strong> your indigo as the core brand colour (just added a cyan and amber for tile variety), and every existing screen/flow/rule — this is a visual pass only, nothing about how the app behaves changes.</li>
+      </ul>
+
+      <h2 style="margin-top:1.5rem;">Palette</h2>
+      <div class="swatch"><span class="sw" style="background:#0a0b0f"></span> Background — near-black</div>
+      <div class="swatch"><span class="sw" style="background:#16181f"></span> Card surface</div>
+      <div class="swatch"><span class="sw" style="background:#4f46e5"></span> Indigo — primary actions, active state</div>
+      <div class="swatch"><span class="sw" style="background:#06b6d4"></span> Cyan — secondary stat</div>
+      <div class="swatch"><span class="sw" style="background:#f59e0b"></span> Amber — tertiary stat</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.switcher button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.switcher button').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.screen-panel').forEach((p) => p.classList.remove('active'));
+      document.getElementById('panel-' + btn.dataset.screen).classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>
