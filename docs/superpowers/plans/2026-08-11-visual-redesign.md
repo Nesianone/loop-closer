@@ -19,6 +19,8 @@
 
 The existing `--color-danger`/`--color-success`/`--color-warning` values are intentionally left unchanged from the current file — those were already tuned to pass WCAG AA contrast as backgrounds under light badge text in an earlier pass, and reusing brighter values there would silently reintroduce that bug. The new `--color-stat-*` variables are separate and only ever used as text color on the dark card background (a different, easier contrast case), which is why they can be brighter.
 
+The `--color-stat-cyan`/`--color-stat-amber` values (`#06b6d4`/`#f59e0b`) and `.btn.secondary`'s use of `--color-surface-2` below are both taken directly from the approved `mockup-redesign.html` — don't substitute other shades even if they'd also pass contrast; the point of this task is to match what was actually shown to and approved by the user, not to independently re-pick colors that happen to work. `--color-surface-2` gives secondary/pill buttons a visually distinct layer one shade lighter than the `.card` they usually sit inside (both currently use `--color-surface` for their background, which is why buttons need the lighter tone to read as separate from their card, not blend into it).
+
 ```css
 :root {
   --color-bg: #0a0b0f;
@@ -37,8 +39,8 @@ The existing `--color-danger`/`--color-success`/`--color-warning` values are int
      (Today's stat row). Not used as backgrounds, so they don't need the
      dark/saturated treatment the badge colors above use. */
   --color-stat-indigo: var(--color-primary-light);
-  --color-stat-cyan: #22d3ee;
-  --color-stat-amber: #fbbf24;
+  --color-stat-cyan: #06b6d4;
+  --color-stat-amber: #f59e0b;
 
   --font-size-base: 16px;
   --font-size-lg: 20px;
@@ -120,7 +122,7 @@ ul {
   margin: 6px 0;
 }
 
-.btn.secondary { background: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-border); }
+.btn.secondary { background: var(--color-surface-2); color: var(--color-text); border: 1px solid var(--color-border); }
 .btn.danger { background: var(--color-danger); }
 .btn.success { background: var(--color-success); }
 
