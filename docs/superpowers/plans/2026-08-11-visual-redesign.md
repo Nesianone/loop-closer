@@ -717,17 +717,93 @@ Clear site data and go through, at a 375px mobile viewport width:
 5. **Weekly Review** — force review-due state (see the original build plan's Task 12 verification technique if needed), confirm the review modal's killed-loops and parking-lot `<ul>` lists show no bullets and read cleanly, confirm the promote modal still works.
 6. **Weekly Recap Log** — confirm past recap entries still display correctly.
 7. **Settings** — confirm the domains `<ul>` shows no bullets, confirm all buttons and inputs still meet the 44px minimum, confirm export/import still work (this task doesn't touch any logic, but re-confirming end-to-end is cheap insurance).
+
+- [ ] **Step 1a: Apply three known, pre-identified fidelity fixes**
+
+Task 1's code review found three specific, already-diagnosed gaps against the approved mockup, deliberately deferred to this task rather than extending Task 1 further. Apply all three in `style.css`:
+
+Change:
+```css
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--color-surface-2); /* matches the mockup's domain-tag background; used by domain tags, the only badges with no status modifier below */
+  color: var(--color-text); /* NOT dimmed to match the mockup's domain-tag text exactly — .badge.active/.parked/.killed/.done below only override background, not color, so they inherit this value and need it to stay bright for contrast against their saturated backgrounds */
+}
+```
+to:
+```css
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--color-surface-2); /* matches the mockup's domain-tag background; used by domain tags, the only badges with no status modifier below */
+  color: var(--color-text); /* NOT dimmed to match the mockup's domain-tag text exactly — .badge.active/.parked/.killed/.done below only override background, not color, so they inherit this value and need it to stay bright for contrast against their saturated backgrounds */
+}
+```
+(matches the design spec's stated rule that small labels — dividers, badges, stat labels — all share the same uppercase/letter-spaced/bold treatment; `.badge.active` etc. below are unaffected since they only override `background`)
+
+Change:
+```css
+.nav-bottom {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  display: flex;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+}
+```
+to:
+```css
+.nav-bottom {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  display: flex;
+  background: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+}
+```
+(matches the mockup, where the nav bar blends into the page background rather than reading as a raised surface)
+
+Change:
+```css
+h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 8px 0 4px;
+}
+```
+to:
+```css
+h3 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin: 8px 0 4px;
+}
+```
+(matches the design spec's "headings — h2, h3, screen titles — move to font-weight: 800", which `h2` already correctly uses; `h3` was a step lighter with no documented reason)
+
+Verify: domain badges (Loop Inventory) now render uppercase with tighter tracking and a bolder weight; the bottom nav bar now blends into the page background instead of reading as a distinctly lighter bar; card titles (`h3`, e.g. a loop's title on its Inventory card) render at the same bold weight as screen titles (`h2`).
 8. **Stuck-or-bored and ship-flow modals** — trigger both (see original plan Tasks 8/9 verification techniques), confirm they render with the new palette and no layout breakage.
 
 For each, also confirm: no horizontal scroll at 375px width, and reloading the page doesn't lose any data (this task makes no data-model changes, so this should trivially hold, but confirm anyway as the final check of the whole plan).
 
-- [ ] **Step 2: Commit (only if Step 1 required a fix)**
+- [ ] **Step 2: Commit**
 
-If Step 1 found and fixed a genuine defect:
+Step 1a's three fixes are always expected to produce a change here. If the walkthrough in Step 1 also found and fixed any additional genuine defect, fold it into the same commit (or a separate one if it's unrelated) rather than leaving it uncommitted:
 
 ```bash
 git add style.css
-git commit -m "fix: <describe the specific visual defect fixed during QA>"
+git commit -m "fix: apply remaining mockup-fidelity fixes found in cross-screen QA (badge typography, nav background, h3 weight)"
 ```
 
-If no fix was needed, skip this step — there's nothing to commit.
+If Step 1's walkthrough found nothing beyond Step 1a's three known fixes, this commit message is accurate as-is — no need to invent additional content.
