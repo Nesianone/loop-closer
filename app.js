@@ -150,17 +150,38 @@ function renderToday() {
   if (activeLoop) {
     const todaysEntry = activeLoop.checkin_history.find((c) => c.date === today);
     const streak = loops.computeStreak(activeLoop, today);
+    const weekCount = loops.computeWeekCompletionCount(activeLoop, today);
+    const tasksOpen = data.tasks.filter((t) => !t.done).length;
+
+    const statRow = `
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-num">${streak}</div>
+          <div class="stat-label">Day streak</div>
+        </div>
+        <div class="stat cyan">
+          <div class="stat-num">${weekCount}/7</div>
+          <div class="stat-label">This week</div>
+        </div>
+        <div class="stat amber">
+          <div class="stat-num">${tasksOpen}</div>
+          <div class="stat-label">Tasks open</div>
+        </div>
+      </div>
+    `;
+
     loopSection = `
+      ${statRow}
+      <div class="divider"><span>Active Loop</span></div>
       <div class="card">
         <span class="badge active">ACTIVE</span> <strong>${escapeHtml(activeLoop.title)}</strong>
         <p>${escapeHtml(activeLoop.next_action || '(no next action set)')}</p>
         ${todaysEntry
           ? `<p>Today: ${todaysEntry.action_completed ? 'Done ✓' : 'Not done'}</p>`
-          : `<button class="btn success" id="today-mark-done">Mark done</button>
-             <button class="btn secondary" id="today-mark-not-done">Not today</button>`
+          : `<button class="btn success pill" id="today-mark-done">Mark done</button>
+             <button class="btn secondary pill" id="today-mark-not-done">Not today</button>`
         }
-        <p>Streak: ${streak} day${streak === 1 ? '' : 's'}</p>
-        <button class="btn secondary" id="today-ship-btn">Ship it</button>
+        <button class="btn secondary pill" id="today-ship-btn">Ship it</button>
       </div>
     `;
   } else {
@@ -190,8 +211,8 @@ function renderToday() {
     <h2>Today</h2>
     ${reviewBanner}
     ${loopSection}
+    <div class="divider"><span>Quick tasks</span></div>
     <div class="card">
-      <h3>Quick tasks</h3>
       <ul id="task-list">${taskRows || '<li>No tasks yet.</li>'}</ul>
       <input id="new-task-title" type="text" placeholder="New task">
       <button class="btn" id="add-task-btn">Add task</button>
