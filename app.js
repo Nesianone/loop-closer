@@ -408,8 +408,8 @@ function renderInventory() {
     const expanded = inventoryExpandedSteps.has(l.id);
     const stepsSection = actionLog.length
       ? `
-        <button class="btn secondary" data-toggle-steps="${l.id}">${expanded ? 'Hide' : 'Show'} steps (${actionLog.length})</button>
-        ${expanded ? `<ul>${actionLog.map((a) => `<li>${escapeHtml(a.date)} — ${escapeHtml(a.text)}</li>`).join('')}</ul>` : ''}
+        <button class="btn secondary pill" data-toggle-steps="${l.id}">${expanded ? 'Hide' : 'Show'} steps (${actionLog.length})</button>
+        ${expanded ? `<ul class="steps-list">${actionLog.map((a) => `<li><span class="step-text">${escapeHtml(a.text)}</span><span class="step-date">${escapeHtml(a.date)}</span></li>`).join('')}</ul>` : ''}
       `
       : '';
 
@@ -420,7 +420,7 @@ function renderInventory() {
         <h3>${escapeHtml(l.title)}</h3>
         <p>${detail}</p>
         ${stepsSection}
-        ${l.status === 'parked' && !hasActive && !loops.hasUnresolvedParkedLoop(data, l.id) ? `<button class="btn" data-activate-id="${l.id}">Activate</button>` : ''}
+        ${l.status === 'parked' && !hasActive && !loops.hasUnresolvedParkedLoop(data, l.id) ? `<button class="ghost-btn" data-activate-id="${l.id}">Activate</button>` : ''}
       </div>
     `;
   }).join('');
