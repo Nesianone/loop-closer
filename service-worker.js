@@ -1,4 +1,4 @@
-const CACHE_NAME = 'loopcloser-v1';
+const CACHE_NAME = 'loopcloser-v2';
 const SHELL_FILES = [
   './',
   './index.html',
