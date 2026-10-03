@@ -8,6 +8,31 @@ function save() {
   storage.saveData(data);
 }
 
+// Visible, on-page error banner. alert() has turned out to be unreliable to
+// depend on as the *only* way an error reaches the user — on some installed/
+// standalone PWA setups it can be suppressed or delayed in ways that make a
+// real failure look identical to "the button did nothing." This renders the
+// error directly into the page itself so it can never be silently swallowed,
+// in addition to (not instead of) calling alert().
+function showErrorBanner(message) {
+  let banner = document.getElementById('error-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'error-banner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#c0392b;color:#fff;padding:12px 16px;font-size:14px;text-align:center;';
+    document.body.prepend(banner);
+  }
+  banner.textContent = message;
+  banner.style.display = 'block';
+}
+
+window.addEventListener('error', (e) => {
+  showErrorBanner('App error: ' + (e.error ? e.error.message : e.message));
+});
+window.addEventListener('unhandledrejection', (e) => {
+  showErrorBanner('App error: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)));
+});
+
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str == null ? '' : String(str);
@@ -776,10 +801,15 @@ function renderOnboarding() {
   }
 
   el.querySelector('#ob-active-submit').addEventListener('click', () => {
-    const next_action = el.querySelector('#ob-active-next').value.trim();
-    const coping_plan = el.querySelector('#ob-active-coping').value.trim();
-    if (!coping_plan) { alert('A coping plan is required to make a loop active.'); return; }
+    // Everything in here is wrapped so that literally nothing can fail
+    // silently — any error, from any line, always shows a visible banner
+    // (not just alert(), which has turned out not to be trustworthy enough
+    // on its own) rather than leaving the screen looking unchanged with no
+    // explanation.
     try {
+      const next_action = el.querySelector('#ob-active-next').value.trim();
+      const coping_plan = el.querySelector('#ob-active-coping').value.trim();
+      if (!coping_plan) { alert('A coping plan is required to make a loop active.'); return; }
       loops.createLoop(data, {
         title: item.title,
         domain: el.querySelector('#ob-domain').value,
@@ -787,28 +817,36 @@ function renderOnboarding() {
         coping_plan,
         status: 'active'
       });
+      save();
+      advance();
     } catch (e) {
-      alert(e.message);
-      return;
+      console.error('Set Active failed:', e);
+      showErrorBanner('Set Active failed: ' + e.message);
+      alert('Set Active failed: ' + e.message);
     }
-    save();
-    advance();
   });
 
   el.querySelector('#ob-park-submit').addEventListener('click', () => {
-    const resumption_plan = el.querySelector('#ob-park-resume').value.trim();
-    if (!resumption_plan) { alert('A resumption plan is required to park a loop.'); return; }
-    loops.createLoop(data, {
-      title: item.title,
-      domain: el.querySelector('#ob-domain').value,
-      status: 'parked',
-      resumption_plan
-    });
-    save();
-    advance();
+    try {
+      const resumption_plan = el.querySelector('#ob-park-resume').value.trim();
+      if (!resumption_plan) { alert('A resumption plan is required to park a loop.'); return; }
+      loops.createLoop(data, {
+        title: item.title,
+        domain: el.querySelector('#ob-domain').value,
+        status: 'parked',
+        resumption_plan
+      });
+      save();
+      advance();
+    } catch (e) {
+      console.error('Park failed:', e);
+      showErrorBanner('Park failed: ' + e.message);
+      alert('Park failed: ' + e.message);
+    }
   });
 
   el.querySelector('#ob-kill-submit').addEventListener('click', () => {
+    try {
     const kill_reason = el.querySelector('#ob-kill-reason').value;
     const kill_note = el.querySelector('#ob-kill-note').value.trim();
     if (kill_reason === 'other' && !kill_note) { alert('A note is required when killing for "other" reasons.'); return; }
@@ -821,6 +859,11 @@ function renderOnboarding() {
     });
     save();
     advance();
+    } catch (e) {
+      console.error('Kill failed:', e);
+      showErrorBanner('Kill failed: ' + e.message);
+      alert('Kill failed: ' + e.message);
+    }
   });
 }
 
