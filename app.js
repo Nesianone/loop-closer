@@ -53,6 +53,32 @@ let onboardingQueue = [];
 let onboardingIndex = 0;
 let onboardingPhase = 'collect'; // 'collect' | 'decide'
 
+// Keep in sync with CACHE_NAME in service-worker.js. Shown on screen so you
+// can tell at a glance which build a phone is actually running.
+const APP_VERSION = 'v4';
+
+// Onboarding progress is saved after every step, not just when a loop is
+// decided. Before this, the "What's unfinished?" list lived only in memory,
+// so swiping the PWA away (or Android killing it in the background) wiped
+// the list and restarted onboarding from scratch.
+function persistOnboarding() {
+  data.onboardingState = { queue: onboardingQueue, index: onboardingIndex, phase: onboardingPhase };
+  save();
+}
+
+// Single source of truth for why activation is blocked, shown on screen
+// instead of a silently-disabled button.
+function activationBlockMessage() {
+  const active = loops.getActiveLoop(data);
+  if (active) {
+    return 'You already have an active loop: "' + active.title + '". Only one loop can be active at a time — park or kill it first.';
+  }
+  if (loops.hasUnresolvedParkedLoop(data)) {
+    return 'You have a parked loop you haven\'t resumed or killed yet. Resolve it before activating another.';
+  }
+  return '';
+}
+
 let inventoryFilterStatus = 'all';
 let inventoryFilterDomain = 'all';
 let inventoryExpandedSteps = new Set();
@@ -503,10 +529,11 @@ function openNewLoopModal() {
     <select id="new-loop-domain">${domainOptions}</select>
 
     <div class="card">
-      <h4>Make it active${blockActivation ? ' — disabled, resolve your active/parked loop first' : ''}</h4>
+      <h4>Make it active</h4>
+      ${blockActivation ? `<p class="blocked-note">${escapeHtml(activationBlockMessage())} Use Park below instead.</p>` : ''}
       <textarea id="new-loop-next" placeholder="Next physical step"></textarea>
       <textarea id="new-loop-coping" placeholder="If I get stuck on X, then I will Y"></textarea>
-      <button class="btn" id="new-loop-active-submit" ${blockActivation ? 'disabled' : ''}>Set Active</button>
+      <button class="btn${blockActivation ? ' blocked' : ''}" id="new-loop-active-submit">Set Active</button>
     </div>
 
     <div class="card">
@@ -520,20 +547,28 @@ function openNewLoopModal() {
   document.getElementById('new-loop-cancel').addEventListener('click', closeModal);
 
   document.getElementById('new-loop-active-submit').addEventListener('click', () => {
-    const title = document.getElementById('new-loop-title').value.trim();
-    const coping_plan = document.getElementById('new-loop-coping').value.trim();
-    if (!title) { alert('Title is required.'); return; }
-    if (!coping_plan) { alert('A coping plan is required to activate.'); return; }
-    loops.createLoop(data, {
-      title,
-      domain: document.getElementById('new-loop-domain').value,
-      next_action: document.getElementById('new-loop-next').value.trim(),
-      coping_plan,
-      status: 'active'
-    });
-    save();
-    closeModal();
-    renderInventory();
+    try {
+      const blockedMsg = activationBlockMessage();
+      if (blockedMsg) { showErrorBanner(blockedMsg); alert(blockedMsg); return; }
+      const title = document.getElementById('new-loop-title').value.trim();
+      const coping_plan = document.getElementById('new-loop-coping').value.trim();
+      if (!title) { alert('Title is required.'); return; }
+      if (!coping_plan) { alert('A coping plan is required to activate.'); return; }
+      loops.createLoop(data, {
+        title,
+        domain: document.getElementById('new-loop-domain').value,
+        next_action: document.getElementById('new-loop-next').value.trim(),
+        coping_plan,
+        status: 'active'
+      });
+      save();
+      closeModal();
+      renderInventory();
+    } catch (e) {
+      console.error('New loop failed:', e);
+      showErrorBanner('Could not activate: ' + e.message);
+      alert('Could not activate: ' + e.message);
+    }
   });
 
   document.getElementById('new-loop-park-submit').addEventListener('click', () => {
@@ -661,6 +696,7 @@ function renderSettings() {
       <input type="file" id="import-file" accept="application/json" style="display:none">
       <button class="btn secondary" id="import-btn">Import JSON backup</button>
     </div>
+    <p class="version-label">Loop Closer ${APP_VERSION}</p>
   `;
 
   el.querySelector('#add-domain-btn').addEventListener('click', () => {
@@ -726,18 +762,21 @@ function renderOnboarding() {
       <input id="onboarding-input" type="text" placeholder="e.g. Spanish course on Duolingo">
       <button class="btn" id="onboarding-add">Add</button>
       <button class="btn success" id="onboarding-continue" ${onboardingQueue.length === 0 ? 'disabled' : ''}>Done adding (${onboardingQueue.length}) — start deciding</button>
+      <p class="version-label">Loop Closer ${APP_VERSION}</p>
     `;
     el.querySelector('#onboarding-add').addEventListener('click', () => {
       const input = el.querySelector('#onboarding-input');
       const title = input.value.trim();
       if (!title) return;
       onboardingQueue.push({ title });
+      persistOnboarding();
       renderOnboarding();
     });
     el.querySelector('#onboarding-continue').addEventListener('click', () => {
       if (onboardingQueue.length === 0) return;
       onboardingPhase = 'decide';
       onboardingIndex = 0;
+      persistOnboarding();
       renderOnboarding();
     });
     return;
@@ -746,6 +785,7 @@ function renderOnboarding() {
   // decide phase
   if (onboardingIndex >= onboardingQueue.length) {
     data.settings.onboarded = true;
+    delete data.onboardingState;
     save();
     onboardingQueue = [];
     onboardingIndex = 0;
@@ -775,10 +815,11 @@ function renderOnboarding() {
     <select id="ob-domain">${domainOptions}</select>
 
     <div class="card">
-      <h3>Make it active${blockActivation ? ' — disabled, resolve your active/parked loop first' : ''}</h3>
+      <h3>Make it active</h3>
+      ${blockActivation ? `<p class="blocked-note">${escapeHtml(activationBlockMessage())} Park or kill THIS one below instead.</p>` : ''}
       <textarea id="ob-active-next" placeholder="Next physical step"></textarea>
       <textarea id="ob-active-coping" placeholder="If I get stuck on X, then I will Y"></textarea>
-      <button class="btn" id="ob-active-submit" ${blockActivation ? 'disabled' : ''}>Set Active</button>
+      <button class="btn${blockActivation ? ' blocked' : ''}" id="ob-active-submit">Set Active</button>
     </div>
 
     <div class="card">
@@ -793,10 +834,12 @@ function renderOnboarding() {
       <textarea id="ob-kill-note" placeholder="Note (required if 'Other')"></textarea>
       <button class="btn danger" id="ob-kill-submit">Kill</button>
     </div>
+    <p class="version-label">Loop Closer ${APP_VERSION}</p>
   `;
 
   function advance() {
     onboardingIndex++;
+    persistOnboarding();
     renderOnboarding();
   }
 
@@ -807,6 +850,8 @@ function renderOnboarding() {
     // on its own) rather than leaving the screen looking unchanged with no
     // explanation.
     try {
+      const blockedMsg = activationBlockMessage();
+      if (blockedMsg) { showErrorBanner(blockedMsg); alert(blockedMsg); return; }
       const next_action = el.querySelector('#ob-active-next').value.trim();
       const coping_plan = el.querySelector('#ob-active-coping').value.trim();
       if (!coping_plan) { alert('A coping plan is required to make a loop active.'); return; }
@@ -880,7 +925,26 @@ document.getElementById('modal-root').addEventListener('click', (e) => {
 // --- Startup ---
 function init() {
   if (!data.settings.onboarded) {
-    showView('onboarding');
+    const st = data.onboardingState;
+    if (st && Array.isArray(st.queue) && st.queue.length > 0 && st.index < st.queue.length) {
+      // Resume an interrupted onboarding exactly where it stopped.
+      onboardingQueue = st.queue;
+      onboardingIndex = st.index || 0;
+      onboardingPhase = st.phase === 'decide' ? 'decide' : 'collect';
+      showView('onboarding');
+    } else if (data.loops.length > 0) {
+      // Loops already exist but onboarding was never marked finished — an
+      // earlier onboarding was interrupted after committing at least one
+      // loop. Re-running it would trap you: if one of those loops is Active,
+      // every "Set Active" is blocked and there's no way out. Treat
+      // onboarding as done and go to Today, where everything can be managed.
+      data.settings.onboarded = true;
+      delete data.onboardingState;
+      save();
+      showView('today');
+    } else {
+      showView('onboarding');
+    }
   } else {
     showView('today');
   }

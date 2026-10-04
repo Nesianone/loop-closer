@@ -295,3 +295,18 @@ textarea { min-height: 80px; }
 .badge.parked { background: var(--color-warning); }
 .badge.killed { background: var(--color-danger); }
 .badge.done { background: var(--color-success); }
+
+/* Shown instead of a silently-disabled button when an action is blocked. */
+.blocked-note {
+  color: var(--color-stat-amber);
+  font-size: 0.9rem;
+  margin: 6px 0;
+}
+.btn.blocked { opacity: 0.55; }
+
+.version-label {
+  color: var(--color-text-dim);
+  font-size: 11px;
+  text-align: center;
+  margin: 16px 0 0;
+}
