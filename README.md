@@ -30,6 +30,17 @@ Open the printed URL, then use your browser's "Add to Home Screen" / "Install" o
 
 All data lives in your browser's `localStorage` on whichever device/browser you use — it does not sync between devices. Use Settings → "Export JSON backup" periodically, and "Import JSON backup" to restore or move to a new device.
 
+## Current version and recent fixes (v4, 2026-10-04)
+
+The version is shown at the bottom of the onboarding screen and Settings. If your phone shows an older number, it hasn't picked up the latest deploy.
+
+- **Onboarding trap fixed.** If an earlier onboarding was interrupted after an Active loop was saved, onboarding used to re-run with "Set Active" permanently disabled and no explanation. The app now treats onboarding as complete when loops already exist.
+- **Onboarding progress is saved** after every step and resumes if the app is closed.
+- **Blocked actions explain themselves.** "Set Active" stays tappable and shows why it's blocked (e.g. "You already have an active loop: X") instead of silently doing nothing.
+- **Service worker is network-first**, so fixes reach installed phones without clearing site data. The old cache-first behaviour is what kept stale code on phones.
+
+**Open item:** v4 is committed locally but still needs `git push` (or pasting the changed files into the GitHub web editor) before the live site updates.
+
 ## Phase 2 (explicitly out of scope for v1)
 
 - Sending weekly digests to another person
