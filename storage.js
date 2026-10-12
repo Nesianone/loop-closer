@@ -45,6 +45,13 @@ export function saveData(data) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
+// Deletes ONLY Loop Closer's own saved data (this one localStorage key).
+// Other apps hosted on the same github.io address keep their data, which is
+// why this removes a single key instead of calling localStorage.clear().
+export function clearData() {
+  localStorage.removeItem(STORAGE_KEY);
+}
+
 export function exportData(data) {
   return JSON.stringify(data, null, 2);
 }

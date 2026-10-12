@@ -55,7 +55,7 @@ let onboardingPhase = 'collect'; // 'collect' | 'decide'
 
 // Keep in sync with CACHE_NAME in service-worker.js. Shown on screen so you
 // can tell at a glance which build a phone is actually running.
-const APP_VERSION = 'v4';
+const APP_VERSION = 'v5';
 
 // Onboarding progress is saved after every step, not just when a loop is
 // decided. Before this, the "What's unfinished?" list lived only in memory,
@@ -665,6 +665,46 @@ function renderRecapLog() {
     ${rows || '<p>No recaps yet. They appear after your first Weekly Review.</p>'}
   `;
 }
+// Downloads the current data as a JSON backup file.
+function downloadBackup() {
+  const blob = new Blob([storage.exportData(data)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `loopcloser-backup-${storage.todayISODate()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Two-step reset: an in-app confirmation (window.confirm is unreliable in an
+// installed PWA), with an option to save a backup first. Wipes only Loop
+// Closer's data, then restarts at onboarding.
+function openResetModal() {
+  openModal(`
+    <h3>Reset all data?</h3>
+    <p>This permanently deletes every loop, task, parked idea and weekly recap stored on this device, and restarts onboarding. It cannot be undone.</p>
+    <button class="btn secondary" id="reset-backup">Download a backup first</button>
+    <button class="btn danger" id="reset-confirm">Yes, delete everything</button>
+    <button class="btn secondary" id="reset-cancel">Cancel</button>
+  `);
+  document.getElementById('reset-cancel').addEventListener('click', closeModal);
+  document.getElementById('reset-backup').addEventListener('click', downloadBackup);
+  document.getElementById('reset-confirm').addEventListener('click', () => {
+    try {
+      storage.clearData();
+      data = storage.loadData();
+      onboardingQueue = [];
+      onboardingIndex = 0;
+      onboardingPhase = 'collect';
+      closeModal();
+      showView('onboarding');
+    } catch (e) {
+      console.error('Reset failed:', e);
+      showErrorBanner('Reset failed: ' + e.message);
+    }
+  });
+}
+
 function renderSettings() {
   const el = document.getElementById('view-settings');
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -696,6 +736,12 @@ function renderSettings() {
       <input type="file" id="import-file" accept="application/json" style="display:none">
       <button class="btn secondary" id="import-btn">Import JSON backup</button>
     </div>
+
+    <div class="card">
+      <h3>Reset</h3>
+      <p>Delete all Loop Closer data on this device and start again.</p>
+      <button class="btn danger" id="reset-btn">Reset all data</button>
+    </div>
     <p class="version-label">Loop Closer ${APP_VERSION}</p>
   `;
 
@@ -721,15 +767,8 @@ function renderSettings() {
     save();
   });
 
-  el.querySelector('#export-btn').addEventListener('click', () => {
-    const blob = new Blob([storage.exportData(data)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `loopcloser-backup-${storage.todayISODate()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  });
+  el.querySelector('#export-btn').addEventListener('click', downloadBackup);
+  el.querySelector('#reset-btn').addEventListener('click', openResetModal);
 
   const fileInput = el.querySelector('#import-file');
   el.querySelector('#import-btn').addEventListener('click', () => fileInput.click());
